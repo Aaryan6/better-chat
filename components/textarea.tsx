@@ -2,6 +2,7 @@ import { modelID } from "@/ai/providers";
 import { Textarea as ShadcnTextarea } from "@/components/ui/textarea";
 import { ArrowUp } from "lucide-react";
 import { ModelPicker } from "./model-picker";
+import { Button } from "./ui/button";
 
 interface InputProps {
   input: string;
@@ -25,7 +26,7 @@ export const Textarea = ({
   return (
     <div className="relative w-full pt-4">
       <ShadcnTextarea
-        className="resize-none bg-secondary w-full rounded-2xl pr-12 pt-4 pb-16"
+        className="resize-none bg-background w-full rounded-2xl pr-12 pt-4 pb-16"
         value={input}
         autoFocus
         placeholder={"Say something..."}
@@ -48,9 +49,10 @@ export const Textarea = ({
       />
 
       {status === "streaming" || status === "submitted" ? (
-        <button
+        <Button
           type="button"
           onClick={stop}
+          size={"icon"}
           className="cursor-pointer absolute right-2 bottom-2 rounded-full p-2 bg-black hover:bg-zinc-800 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-colors"
         >
           <div className="animate-spin h-4 w-4">
@@ -71,15 +73,16 @@ export const Textarea = ({
               />
             </svg>
           </div>
-        </button>
+        </Button>
       ) : (
-        <button
+        <Button
           type="submit"
           disabled={isLoading || !input.trim()}
+          size={"icon"}
           className="absolute right-2 bottom-2 rounded-full p-2 bg-black hover:bg-zinc-800 disabled:bg-zinc-300 disabled:dark:bg-zinc-700 dark:disabled:opacity-80 disabled:cursor-not-allowed transition-colors"
         >
           <ArrowUp className="h-4 w-4 text-white" />
-        </button>
+        </Button>
       )}
     </div>
   );
