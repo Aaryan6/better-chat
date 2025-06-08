@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { chat } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { auth } from "@clerk/nextjs/server";
 
 export async function GET(req: NextRequest) {
@@ -15,6 +15,6 @@ export async function GET(req: NextRequest) {
     id: chat.id,
     title: chat.title,
     createdAt: chat.createdAt,
-  }).from(chat).where(eq(chat.userId, userId)).orderBy(chat.createdAt);
+  }).from(chat).where(eq(chat.userId, userId)).orderBy(desc(chat.createdAt));
   return NextResponse.json(chats);
 }

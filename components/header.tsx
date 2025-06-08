@@ -5,7 +5,7 @@ import { ThemeToggle } from "./theme-toggle";
 
 export const Header = () => {
   return (
-    <div className="w-full h-[54px] border-b">
+    <div className="w-full h-[54px] border-b z-50 bg-background absolute w-full top-0">
       <div className="flex justify-between items-center h-full px-4">
         <div className="flex flex-row items-center gap-2 shrink-0 ">
           <SidebarTrigger/>

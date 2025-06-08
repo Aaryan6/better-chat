@@ -4,8 +4,12 @@ import { db } from '@/lib/db';
 import { message as messageTable } from '@/db/schema';
 import { eq, asc } from 'drizzle-orm';
 
-export default async function ChatPage({ params }: { params: { chatId: string } }) {
-  const { chatId } = params;
+type Props = {
+  params: Promise<{ chatId: string }>;
+};
+
+export default async function ChatPage({ params }: Props) {
+  const { chatId } = await params;
   if (!chatId) return notFound();
 
   // Fetch messages for this chat, ordered by creation time

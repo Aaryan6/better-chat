@@ -3,6 +3,8 @@ import { Textarea as ShadcnTextarea } from "@/components/ui/textarea";
 import { ArrowUp } from "lucide-react";
 import { ModelPicker } from "./model-picker";
 import { Button } from "./ui/button";
+import { UIMessage } from "ai";
+import { cn } from "@/lib/utils";
 
 interface InputProps {
   input: string;
@@ -12,6 +14,7 @@ interface InputProps {
   stop: () => void;
   selectedModel: modelID;
   setSelectedModel: (model: modelID) => void;
+  messages: UIMessage[];
 }
 
 export const Textarea = ({
@@ -22,11 +25,12 @@ export const Textarea = ({
   stop,
   selectedModel,
   setSelectedModel,
+  messages,
 }: InputProps) => {
   return (
-    <div className="relative w-full pt-4">
+    <div className="relative w-full">
       <ShadcnTextarea
-        className="resize-none bg-background w-full rounded-2xl pr-12 pt-4 pb-16"
+        className={cn("resize-none bg-muted/50 border-2 border-border backdrop-blur-sm w-full rounded-2xl pr-12 pt-4 pb-16 focus-visible:ring-0 focus-visible:border-border", messages.length > 0 && "rounded-b-none")}
         value={input}
         autoFocus
         placeholder={"Say something..."}

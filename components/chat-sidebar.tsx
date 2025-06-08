@@ -45,9 +45,11 @@ export function ChatSidebar() {
     <Sidebar className="w-full md:w-[var(--sidebar-width)] border-r flex flex-col h-screen">
       <div className="p-4 flex items-center justify-between">
         <h2 className="text-xl font-semibold">Chatbot</h2>
-        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+        <Button asChild variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+          <Link href="/">
           <PlusIcon className="h-5 w-5" />
           <span className="sr-only">New Chat</span>
+          </Link>
         </Button>
       </div>
 
@@ -63,7 +65,7 @@ export function ChatSidebar() {
             {chats.map((chat) => (
               <SidebarMenuItem key={chat.id} className="relative">
                 <SidebarMenuButton 
-                asChild
+                  asChild
                   isActive={activeChatId === chat.id}
                   className="w-full justify-start h-10 text-sm truncate pr-10"
                   onClick={() => setActiveChatId(chat.id)}

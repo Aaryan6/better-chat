@@ -207,3 +207,11 @@
   align-items: center;
   height: 100vh;
 }
+
+html,body{
+  height: 100%;
+}
+
+*::-webkit-scrollbar {
+  width: 0
+}

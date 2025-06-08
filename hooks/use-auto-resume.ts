@@ -35,7 +35,11 @@ export function useAutoResume({
     const dataPart = data[0] as DataPart;
     if (dataPart.type === 'append-message') {
       const message = JSON.parse(dataPart.message) as UIMessage;
-      setMessages([...initialMessages, message]);
+      // Only update if the last message is not the same
+      const lastMessage = initialMessages[initialMessages.length - 1];
+      if (!lastMessage || lastMessage.id !== message.id) {
+        setMessages([...initialMessages, message]);
+      }
     }
   }, [data, initialMessages, setMessages]);
 }

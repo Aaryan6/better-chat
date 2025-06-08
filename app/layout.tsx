@@ -5,7 +5,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/header";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { ChatSidebar } from "@/components/chat-sidebar";
 import { ThemeProvider } from "@/providers/theme-provider";
 
@@ -49,15 +49,10 @@ export default function RootLayout({
 
           <Toaster position="top-center" />
           <SidebarProvider defaultOpen={true}>
-            <div className="flex h-screen w-full">
               <ChatSidebar />
-              <div className="flex flex-col flex-1">
-               <Header />
-                <main className="h-[calc(100vh-54px)] flex flex-col w-full flex-1 bg-muted/50 dark:bg-background">
+              <SidebarInset>
                   {children}
-                </main>
-              </div>
-            </div>
+              </SidebarInset>
           </SidebarProvider>
           </ThemeProvider>
         </body>
