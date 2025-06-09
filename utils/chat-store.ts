@@ -25,11 +25,10 @@ export async function loadStreams(chatId: string): Promise<string[]> {
       })
       .from(streamTable)
       .where(eq(streamTable.chatId, chatId))
-      .orderBy(asc(streamTable.createdAt)); // Ensure streams are loaded in order
+      .orderBy(asc(streamTable.createdAt))
+      .execute();
     
-    const streamIds = streamRecords.map(record => record.id);
-    console.log(`Loaded ${streamIds.length} stream IDs for chat ${chatId} from DB:`, streamIds);
-    return streamIds;
+    return streamRecords.map(({id}) => id);
   } catch (error) {
     console.error(`Error loading stream IDs for chat ${chatId} from DB:`, error);
     return []; // Return empty array on error to prevent breaking, or re-throw

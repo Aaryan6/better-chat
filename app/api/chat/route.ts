@@ -4,7 +4,7 @@ import { chat as chatTable, message as messageTable } from "@/db/schema";
 import { db } from "@/lib/db";
 import { appendStreamId, loadStreams } from '@/utils/chat-store';
 import { auth } from "@clerk/nextjs/server";
-import { CoreMessage, createDataStream, smoothStream, streamText, UIMessage } from "ai";
+import { createDataStream, smoothStream, streamText, UIMessage } from "ai";
 import { desc, eq } from 'drizzle-orm';
 import { after } from 'next/server';
 import { createResumableStreamContext } from 'resumable-stream';
@@ -33,6 +33,8 @@ export async function GET(request: Request) {
   }
 
   const streamIds = await loadStreams(chatId);
+
+  console.log({streamIds})
 
   if (!streamIds.length) {
     return new Response('No streams found', { status: 404 });
@@ -86,34 +88,23 @@ export async function GET(request: Request) {
 
 export async function POST(req: Request) {
   const { userId } = await auth();
+  
   if (!userId) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const requestBody = await req.json();
-  const clientMessages: UIMessage[] = requestBody.messages;
-  const selectedModel: modelID = requestBody.selectedModel;
-  const currentChatIdFromRequest: string | undefined = requestBody.chatId || requestBody.id; // Accept 'id' as fallback
+  const {messages, selectedModel, chatId} = await req.json();
 
-  // Validate if currentChatIdFromRequest is a valid UUID. If not, treat as a new chat.
-  const currentChatId: string | undefined = currentChatIdFromRequest && isValidUUID(currentChatIdFromRequest)
-    ? currentChatIdFromRequest
-    : undefined;
+  console.log({chatId})
 
-  if (currentChatIdFromRequest && !currentChatId) {
-    console.log(`Provided ID '${currentChatIdFromRequest}' is not a valid UUID. Treating as a new chat.`);
-  }
-
-  let chatRecordId = currentChatId;
-  console.log(`Initial chatRecordId: ${chatRecordId}`);
-  let newChatCreated = false;
-
-
-  const lastUserMessage = clientMessages.filter(m => m.role === 'user').pop();
+  const lastUserMessage = messages.filter((m: UIMessage) => m.role === 'user').pop();
 
   if (!lastUserMessage) {
     return new Response("No user message found", { status: 400 });
   }
+
+  let chatRecordId = chatId;
+  let newChatCreated = false;
 
   // Ensure lastUserMessage.content is a string for database saving
   const lastUserMessageContentString = typeof lastUserMessage.content === 'string' 
@@ -122,10 +113,8 @@ export async function POST(req: Request) {
 
   // Save user message
   if (lastUserMessageContentString) {
-    console.log("Attempting to save user message. Current chatRecordId:", chatRecordId);
-    if (!chatRecordId) {
+    if (!chatId) {
       const newChatId = uuidv4(); // Generate UUID for new chat
-      console.log(`No chatRecordId, creating new chat with id: ${newChatId}`);
       const newChat = await db
         .insert(chatTable)
         .values({
@@ -145,7 +134,6 @@ export async function POST(req: Request) {
       }
     }
 
-    console.log(`Saving user message to chatRecordId: ${chatRecordId}`);
     await db.insert(messageTable).values({
       id: uuidv4(), // Generate UUID for new message
       chatId: chatRecordId!, // chatRecordId is now guaranteed to be set
@@ -154,27 +142,23 @@ export async function POST(req: Request) {
       attachments: [], // Assuming no attachments for now
       createdAt: new Date(),
     });
-    console.log("User message saved.");
   }
 
   // --- Resumable stream logic ---
   const streamId = uuidv4();
-  console.log(`Appending streamId: ${streamId} to chatRecordId: ${chatRecordId}`);
   await appendStreamId({ chatId: chatRecordId!, streamId });
-  console.log("StreamId appended.");
 
   const stream = createDataStream({
     execute: dataStream => {
       const result = streamText({
         model: model.languageModel(selectedModel),
         system: "You are a helpful assistant.",
-        messages: clientMessages,
-        // tools: {
-        //   getWeather: weatherTool,
-        // },
+        messages: messages,
+        tools: {
+          getWeather: weatherTool,
+        },
         experimental_transform: smoothStream({chunking: 'word'}),
         onFinish: async ({ text }) => {
-          console.log(`streamText onFinish triggered for chatRecordId: ${chatRecordId}. Received text length: ${text?.length}`);
           if (chatRecordId && text) {
             await db.insert(messageTable).values({
               id: uuidv4(),
@@ -184,7 +168,6 @@ export async function POST(req: Request) {
               attachments: [],
               createdAt: new Date(),
             });
-            console.log("Assistant message saved.");
           }
         },
       });
@@ -194,14 +177,16 @@ export async function POST(req: Request) {
 
   const resumable = await streamContext.resumableStream(streamId, () => stream);
 
-  const responseHeaders = new Headers();
-  if (newChatCreated && chatRecordId) {
-    responseHeaders.set('X-Chat-Id', chatRecordId);
-  }
+  // send new chat id to client
+  const headers = new Headers();
+  headers.set('X-Chat-Id', chatRecordId!);
+
+  console.log({chatRecordId})
+
 
   return new Response(resumable, {
     status: 200,
-    headers: responseHeaders,
+    headers,
   });
 }
 
