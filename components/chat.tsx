@@ -11,15 +11,17 @@ import { Textarea } from "./textarea";
 
 import { cn } from "@/lib/utils";
 import { Header } from "./header";
+import { mutate } from "swr";
 
 export default function Chat({
   chatId,
-  initialMessages,
+  initialMessages = [],
 }: {
-  chatId?: string;
+  chatId: string;
   initialMessages?: any[];
 }) {
   const [selectedModel, setSelectedModel] = useState<modelID>(defaultModel);
+  const [isMounted, setIsMounted] = useState(false);
 
   const {
     messages,
@@ -37,31 +39,46 @@ export default function Chat({
     maxSteps: 5,
     body: {
       selectedModel,
-      chatId
+      chatId,
     },
     sendExtraMessageFields: true,
     onResponse: (response) => {
-      const headers = response.headers;
-      const chatId = headers.get('X-Chat-Id');
+      if (!response.ok) {
+        toast.error("Failed to get response from server", {
+          position: "top-center",
+          richColors: true,
+        });
+        return;
+      }
 
-      if (messages.length > 0 && response.ok && chatId) {
-        window.history.replaceState({}, '', `/chat/${chatId}`);
+      const headers = response.headers;
+      const responseId = headers.get("X-Chat-Id");
+
+      // Update URL with chatId from response if needed
+      if (messages.length === 0 && responseId) {
+        window.history.replaceState({}, "", `/chat/${responseId}`);
+      }
+      if (messages.length < 3) {
+        mutate("/api/history");
       }
     },
     onError: (error) => {
-      toast.error(
+      const errorMessage =
         error.message.length > 0
           ? error.message
-          : "An error occured, please try again later.",
-        { position: "top-center", richColors: true }
-      );
+          : "An error occurred, please try again later.";
+
+      toast.error(errorMessage, {
+        position: "top-center",
+        richColors: true,
+      });
     },
   });
 
-  // Redirect only after assistant response is present
-  // useEffect(() => {
-  //   window.history.replaceState({}, '', `/chat/${chatId}`);
-  // }, [chatId, messages.length]);
+  // Use effect to set mounted state
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useAutoResume({
     autoResume: true,
@@ -71,7 +88,37 @@ export default function Chat({
     setMessages,
   });
 
+  // Handle form submission with enhanced error handling
+  const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!input.trim()) {
+      toast.error("Please enter a message", {
+        position: "top-center",
+        richColors: true,
+      });
+      return;
+    }
+
+    try {
+      await handleSubmit(e);
+    } catch (error: any) {
+      toast.error(
+        `Failed to send message: ${error.message || "Unknown error"}`,
+        {
+          position: "top-center",
+          richColors: true,
+        }
+      );
+    }
+  };
+
   const isLoading = status === "streaming" || status === "submitted";
+
+  // Don't render anything on the server
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <div
@@ -89,7 +136,7 @@ export default function Chat({
         <Messages messages={messages} isLoading={isLoading} status={status} />
       )}
       <form
-        onSubmit={handleSubmit}
+        onSubmit={handleFormSubmit}
         className={cn(
           "w-full max-w-xl mx-auto px-4 sm:px-0 pt-4",
           messages.length > 0 && "absolute bottom-0 inset-x-0 max-w-3xl pt-0"

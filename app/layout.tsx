@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ClerkProvider } from '@clerk/nextjs';
+import { ClerkProvider } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
@@ -46,14 +46,11 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-
-          <Toaster position="top-center" />
-          <SidebarProvider defaultOpen={true}>
+            <Toaster position="top-center" />
+            <SidebarProvider defaultOpen={true}>
               <ChatSidebar />
-              <SidebarInset>
-                  {children}
-              </SidebarInset>
-          </SidebarProvider>
+              <SidebarInset>{children}</SidebarInset>
+            </SidebarProvider>
           </ThemeProvider>
         </body>
       </html>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import React, { memo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { CodeBlock } from "./code-block";
 
 const components: Partial<Components> = {
   pre: ({ children }) => <>{children}</>,
@@ -89,6 +90,16 @@ const components: Partial<Components> = {
       </h6>
     );
   },
+  code: ({ className, children, ...props }: any) => {
+    const match = /language-(\w+)/.exec(className || "");
+    const inline = !match;
+
+    return (
+      <CodeBlock inline={inline} className={className} {...props}>
+        {children}
+      </CodeBlock>
+    );
+  },
 };
 
 const remarkPlugins = [remarkGfm];
@@ -103,5 +114,5 @@ const NonMemoizedMarkdown = ({ children }: { children: string }) => {
 
 export const Markdown = memo(
   NonMemoizedMarkdown,
-  (prevProps, nextProps) => prevProps.children === nextProps.children,
+  (prevProps, nextProps) => prevProps.children === nextProps.children
 );

@@ -75,7 +75,7 @@ export function ReasoningMessagePart({
               "cursor-pointer rounded-full dark:hover:bg-zinc-800 hover:bg-zinc-200",
               {
                 "dark:bg-zinc-800 bg-zinc-200": isExpanded,
-              },
+              }
             )}
             onClick={() => {
               setIsExpanded(!isExpanded);
@@ -106,7 +106,7 @@ export function ReasoningMessagePart({
                 <Markdown key={detailIndex}>{detail.text}</Markdown>
               ) : (
                 "<redacted>"
-              ),
+              )
             )}
           </motion.div>
         )}
@@ -137,10 +137,9 @@ const PurePreviewMessage = ({
         <div
           className={cn(
             "flex gap-4 w-full group-data-[role=user]/message:ml-auto max-w-2xl",
-            "group-data-[role=user]/message:w-fit",
+            "group-data-[role=user]/message:w-fit"
           )}
         >
-
           <div className="flex flex-col w-full space-y-4">
             {message.parts?.map((part, i) => {
               switch (part.type) {
