@@ -3,7 +3,7 @@
 import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { atomDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
 
 interface CodeBlockProps {
   node?: any;
@@ -62,15 +62,15 @@ export function CodeBlock({
   if (!inline) {
     return (
       <div className="not-prose relative my-4">
-        <div className="relative">
+        <div className="relative max-w-2xl">
           <SyntaxHighlighter
             language={language || undefined}
-            style={vscDarkPlus}
+            style={atomDark}
             customStyle={{
               borderRadius: "0.5rem",
               padding: "1rem",
               margin: "0",
-              backgroundColor: "#1e1e1e",
+              backgroundColor: "#101113",
             }}
             wrapLongLines={true}
             wrapLines={true}
@@ -95,7 +95,7 @@ export function CodeBlock({
   } else {
     return (
       <code
-        className={`${className} rounded-md bg-zinc-100 px-1 py-0.5 text-sm dark:bg-zinc-800`}
+        className={`${className} rounded-md bg-zinc-100 px-1 py-0.5 text-sm dark:bg-slate-800`}
         {...props}
       >
         {children}
