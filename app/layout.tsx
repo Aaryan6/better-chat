@@ -1,13 +1,12 @@
-import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import { ChatSidebar } from "@/components/chat-sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { Header } from "@/components/header";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { ChatSidebar } from "@/components/chat-sidebar";
 import { ThemeProvider } from "@/providers/theme-provider";
+import { ClerkProvider } from "@clerk/nextjs";
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,9 +19,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Vercel x Groq Chatbot",
-  description:
-    "This starter project uses Groq with the AI SDK via the Vercel Marketplace",
+  title: "Better Chat",
+  description: "Better Chat is the only chatbot that you need.",
 };
 
 export default function RootLayout({

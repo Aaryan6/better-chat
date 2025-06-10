@@ -132,12 +132,12 @@ export async function POST(req: Request) {
           Rules:
           - Use markdown for code blocks, wrap the code in \`\`\` and add the programming language to the code block.`,
         messages: messages,
-        tools: {
-          getWeather: weatherTool,
-        },
+        // tools: {
+        //   getWeather: weatherTool,
+        // },
         experimental_transform: smoothStream({
           chunking: "word",
-          delayInMs: 20,
+          delayInMs: 30,
         }),
         onFinish: async ({ text }) => {
           // Try to save the assistant message first
@@ -152,8 +152,9 @@ export async function POST(req: Request) {
           }
         },
       });
-      result.mergeIntoDataStream(dataStream);
+      result.mergeIntoDataStream(dataStream, { sendReasoning: true });
     },
+    onError: errorHandler,
   });
 
   const resumable = await streamContext.resumableStream(streamId, () => stream);
@@ -166,4 +167,20 @@ export async function POST(req: Request) {
     status: 200,
     headers,
   });
+}
+
+function errorHandler(error: unknown) {
+  if (error == null) {
+    return "unknown error";
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return JSON.stringify(error);
 }

@@ -4,7 +4,7 @@ import { stream as streamTable } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { saveStreamId } from "@/db/queries";
 import { generateText } from "ai";
-import { model } from "@/ai/providers";
+import { defaultModel, model } from "@/ai/providers";
 
 // Maintain appendStreamId for backward compatibility
 export async function appendStreamId({
@@ -46,7 +46,7 @@ export async function generateTitleFromMessages({
   assistantMessage: string;
 }) {
   const { text } = await generateText({
-    model: model.languageModel("llama-3.1-8b-instant"),
+    model: model.languageModel(defaultModel),
     prompt: `Generate a title short title under 10 words for the following chat:\n
     user: ${userMessage}\n
     assistant: ${assistantMessage}

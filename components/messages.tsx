@@ -4,6 +4,7 @@ import { useScrollToBottom } from "@/lib/hooks/use-scroll-to-bottom";
 import { ScrollArea } from "./ui/scroll-area";
 import { useEffect } from "react";
 import { SpinnerIcon } from "./icons";
+import { TextShimmer } from "./motion-primitives/text-shimmer";
 
 export const Messages = ({
   messages,
@@ -39,13 +40,10 @@ export const Messages = ({
             status={status}
           />
         ))}
-        {status === "streaming" && (
+        {status === "submitted" && (
           <div className="flex flex-col gap-2">
             <div className="flex flex-row gap-2 items-center">
-              <div className="font-medium text-sm">Reasoning</div>
-              <div className="animate-spin">
-                <SpinnerIcon />
-              </div>
+              <TextShimmer duration={0.8}>Thinking...</TextShimmer>
             </div>
           </div>
         )}

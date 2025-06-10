@@ -81,7 +81,7 @@ export function ReasoningMessagePart({
               setIsExpanded(!isExpanded);
             }}
           >
-            {isExpanded ? (
+            {!isExpanded ? (
               <ChevronDownIcon className="h-4 w-4" />
             ) : (
               <ChevronUpIcon className="h-4 w-4" />

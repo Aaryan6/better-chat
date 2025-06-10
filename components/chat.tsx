@@ -13,6 +13,20 @@ import { cn } from "@/lib/utils";
 import { Header } from "./header";
 import { mutate } from "swr";
 
+const SELECTED_MODEL_KEY = "better-chat-model";
+
+// Function to get initial model from localStorage or fallback to default
+const getInitialModel = (): modelID => {
+  if (typeof window === "undefined") return defaultModel;
+
+  try {
+    const saved = localStorage.getItem(SELECTED_MODEL_KEY);
+    return (saved as modelID) || defaultModel;
+  } catch {
+    return defaultModel;
+  }
+};
+
 export default function Chat({
   chatId,
   initialMessages = [],
@@ -20,7 +34,7 @@ export default function Chat({
   chatId: string;
   initialMessages?: any[];
 }) {
-  const [selectedModel, setSelectedModel] = useState<modelID>(defaultModel);
+  const [selectedModel, setSelectedModel] = useState<modelID>(getInitialModel);
   const [isMounted, setIsMounted] = useState(false);
 
   const {
@@ -63,6 +77,7 @@ export default function Chat({
       }
     },
     onError: (error) => {
+      console.log("error", error);
       const errorMessage =
         error.message.length > 0
           ? error.message
@@ -79,6 +94,17 @@ export default function Chat({
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Save selected model to localStorage whenever it changes
+  useEffect(() => {
+    if (isMounted) {
+      try {
+        localStorage.setItem(SELECTED_MODEL_KEY, selectedModel);
+      } catch (error) {
+        console.warn("Failed to save selected model to localStorage:", error);
+      }
+    }
+  }, [selectedModel, isMounted]);
 
   useAutoResume({
     autoResume: true,
@@ -101,7 +127,7 @@ export default function Chat({
     }
 
     try {
-      await handleSubmit(e);
+      handleSubmit(e);
     } catch (error: any) {
       toast.error(
         `Failed to send message: ${error.message || "Unknown error"}`,
