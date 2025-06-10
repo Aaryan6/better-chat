@@ -15,8 +15,17 @@ import {
   PocketKnife,
   SparklesIcon,
   StopCircle,
+  PencilIcon,
+  RefreshCcwIcon,
 } from "lucide-react";
 import { SpinnerIcon } from "./icons";
+import { Button } from "./ui/button";
+import { MessageEditor } from "./message-editor";
+import { UseChatHelpers } from "@ai-sdk/react";
+import {
+  deleteTrailingMessages,
+  deleteResponsesAfterMessage,
+} from "@/app/(chat)/actions";
 
 interface ReasoningPart {
   type: "reasoning";
@@ -119,12 +128,55 @@ const PurePreviewMessage = ({
   message,
   isLatestMessage,
   status,
+  setMessages,
+  reload,
 }: {
   message: TMessage;
   isLoading: boolean;
   status: "error" | "submitted" | "streaming" | "ready";
   isLatestMessage: boolean;
+  setMessages: UseChatHelpers["setMessages"];
+  reload: UseChatHelpers["reload"];
 }) => {
+  const [mode, setMode] = useState<"view" | "edit">("view");
+
+  const handleRetry = async () => {
+    try {
+      await deleteTrailingMessages({
+        id: message.id,
+      });
+
+      // Get the original message content
+      const originalContent =
+        typeof message.content === "string"
+          ? message.content
+          : message.parts?.[0]?.type === "text"
+          ? message.parts[0].text
+          : "";
+
+      // Update messages state same as MessageEditor but keep original content
+      setMessages((messages: any) => {
+        const index = messages.findIndex((m: any) => m.id === message.id);
+
+        if (index !== -1) {
+          const updatedMessage = {
+            ...message,
+            content: originalContent,
+            parts: [{ type: "text" as const, text: originalContent }],
+          };
+
+          return [...messages.slice(0, index), updatedMessage];
+        }
+
+        return messages;
+      });
+
+      reload();
+    } catch (error) {
+      console.error("Failed to retry message:", error);
+    }
+  };
+
   return (
     <AnimatePresence key={message.id}>
       <motion.div
@@ -137,7 +189,7 @@ const PurePreviewMessage = ({
         <div
           className={cn(
             "flex gap-4 w-full group-data-[role=user]/message:ml-auto max-w-2xl",
-            "group-data-[role=user]/message:w-fit"
+            "group-data-[role=user]/message:w-fit relative"
           )}
         >
           <div className="flex flex-col w-full space-y-4">
@@ -152,12 +204,46 @@ const PurePreviewMessage = ({
                       className="flex flex-row gap-2 items-start w-full pb-4"
                     >
                       <div
-                        className={cn("flex flex-col gap-4", {
+                        className={cn("flex flex-col gap-4 relative", {
                           "bg-secondary text-secondary-foreground px-3 py-2 rounded-tl-xl rounded-tr-xl rounded-bl-xl":
                             message.role === "user",
                         })}
                       >
-                        <Markdown>{part.text}</Markdown>
+                        {mode === "edit" && message.role === "user" ? (
+                          <MessageEditor
+                            message={message}
+                            setMode={setMode}
+                            setMessages={setMessages}
+                            reload={reload}
+                          />
+                        ) : (
+                          <>
+                            <Markdown>{part.text}</Markdown>
+                            {message.role === "user" && !isLatestMessage && (
+                              <div className="flex flex-row gap-1 absolute -right-2 -bottom-8 px-2 opacity-0 group-hover/message:opacity-100 transition-opacity">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={handleRetry}
+                                  className="w-6 h-6"
+                                  title="Retry response"
+                                >
+                                  <RefreshCcwIcon className="h-3 w-3" />
+                                </Button>
+
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="w-6 h-6"
+                                  onClick={() => setMode("edit")}
+                                  title="Edit message"
+                                >
+                                  <PencilIcon className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </motion.div>
                   );
@@ -226,6 +312,8 @@ export const Message = memo(PurePreviewMessage, (prevProps, nextProps) => {
   if (prevProps.status !== nextProps.status) return false;
   if (prevProps.message.annotations !== nextProps.message.annotations)
     return false;
+  if (prevProps.setMessages !== nextProps.setMessages) return false;
+  if (prevProps.reload !== nextProps.reload) return false;
   // if (prevProps.message.content !== nextProps.message.content) return false;
   if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
 

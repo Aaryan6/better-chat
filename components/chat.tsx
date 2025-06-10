@@ -3,7 +3,7 @@
 import { defaultModel, modelID } from "@/ai/providers";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChat } from "@ai-sdk/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Messages } from "./messages";
 import { ProjectOverview } from "./project-overview";
@@ -15,6 +15,7 @@ import { mutate } from "swr";
 import Link from "next/link";
 import { XIcon } from "lucide-react";
 import { Button } from "./ui/button";
+import { useUser } from "@clerk/nextjs";
 
 // Function to get credits from cookies
 const getCreditsFromCookies = (): number => {
@@ -48,6 +49,7 @@ export default function Chat({
   const [selectedModel, setSelectedModel] = useState<modelID>(getInitialModel);
   const [isMounted, setIsMounted] = useState(false);
   const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
+  const { user } = useUser();
 
   const {
     messages,
@@ -59,6 +61,8 @@ export default function Chat({
     experimental_resume,
     data,
     setMessages,
+    append,
+    reload,
   } = useChat({
     id: chatId,
     initialMessages,
@@ -187,7 +191,13 @@ export default function Chat({
           <ProjectOverview />
         </div>
       ) : (
-        <Messages messages={messages} isLoading={isLoading} status={status} />
+        <Messages
+          messages={messages}
+          isLoading={isLoading}
+          status={status}
+          setMessages={setMessages}
+          reload={reload}
+        />
       )}
       <form
         onSubmit={handleFormSubmit}
@@ -197,7 +207,7 @@ export default function Chat({
         )}
       >
         <div className="space-y-3 grid gap-2">
-          {remainingCredits !== null && remainingCredits <= 10 && (
+          {!user && remainingCredits !== null && remainingCredits <= 10 && (
             <div
               className={cn(
                 "mx-auto max-w-md w-full order-2",

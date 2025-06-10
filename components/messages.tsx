@@ -6,14 +6,20 @@ import { useEffect } from "react";
 import { SpinnerIcon } from "./icons";
 import { TextShimmer } from "./motion-primitives/text-shimmer";
 
+import { UseChatHelpers } from "@ai-sdk/react";
+
 export const Messages = ({
   messages,
   isLoading,
   status,
+  setMessages,
+  reload,
 }: {
   messages: TMessage[];
   isLoading: boolean;
   status: "error" | "submitted" | "streaming" | "ready";
+  setMessages: UseChatHelpers["setMessages"];
+  reload: UseChatHelpers["reload"];
 }) => {
   const [containerRef, endRef, scrollToBottom] = useScrollToBottom();
 
@@ -38,6 +44,8 @@ export const Messages = ({
             isLoading={isLoading}
             message={m}
             status={status}
+            setMessages={setMessages}
+            reload={reload}
           />
         ))}
         {status === "submitted" && (

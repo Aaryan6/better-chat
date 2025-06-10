@@ -41,7 +41,7 @@ interface ChatItem {
 export function ChatSidebar() {
   const { user } = useUser();
   const { data: chats, isLoading } = useSWR<ChatItem[]>(
-    "/api/history",
+    user ? "/api/history" : null,
     async (url: string) => {
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch chat history");
