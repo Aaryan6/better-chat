@@ -46,10 +46,6 @@ export function ChatSidebar() {
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to fetch chat history");
       return res.json();
-    },
-    {
-      revalidateOnReconnect: true,
-      revalidateIfStale: true,
     }
   );
   const { chatId } = useParams();
@@ -72,8 +68,13 @@ export function ChatSidebar() {
       </div>
 
       <SidebarContent className="flex-grow overflow-y-auto p-4 space-y-2">
-        {isLoading && (
+        {user && isLoading && (
           <p className="text-xs text-muted-foreground px-2">Loading chats...</p>
+        )}
+        {!user && (
+          <p className="text-xs text-muted-foreground text-center px-2 py-4">
+            Sign in to save your chats.
+          </p>
         )}
         {!isLoading && chats?.length === 0 && (
           <p className="text-xs text-muted-foreground text-center px-2 py-4">
@@ -117,45 +118,48 @@ export function ChatSidebar() {
 
       <SidebarSeparator className="ml-0" />
 
-      <SidebarFooter className="pb-0">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="w-full justify-between">
-              <div className="flex items-center gap-2">
-                <Avatar className="h-7 w-7">
-                  <AvatarImage
-                    src={user?.imageUrl}
-                    alt={user?.fullName || "User"}
-                  />
-                  <AvatarFallback>
-                    {user?.fullName?.charAt(0) ||
-                      user?.firstName?.charAt(0) ||
-                      user?.lastName?.charAt(0) ||
-                      "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium">
-                  {user?.fullName || user?.firstName || "User"}
-                </span>
-              </div>
-              <ChevronUpIcon className="h-4 w-4 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-48 p-2" align="end">
-            <SignedIn>
-              <DropdownMenuAuth />
-            </SignedIn>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <div className="flex flex-col gap-2">
-          <SignedOut>
-            <SignInButton mode="modal">
-              <Button variant="outline" className="w-full">
-                Sign In
+      <SidebarFooter className="pb-2">
+        {user ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-7 w-7">
+                    <AvatarImage
+                      src={user?.imageUrl}
+                      alt={user?.fullName || "User"}
+                    />
+                    <AvatarFallback>
+                      {user?.fullName?.charAt(0) ||
+                        user?.firstName?.charAt(0) ||
+                        user?.lastName?.charAt(0) ||
+                        "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium">
+                    {user?.fullName || user?.firstName || "User"}
+                  </span>
+                </div>
+                <ChevronUpIcon className="h-4 w-4 text-muted-foreground" />
               </Button>
-            </SignInButton>
-          </SignedOut>
-        </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-48 p-2" align="end">
+              <SignedIn>
+                <DropdownMenuAuth />
+              </SignedIn>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <SignedOut>
+              <SignInButton mode="modal">
+                <Button variant="outline" className="w-full">
+                  Sign In
+                </Button>
+              </SignInButton>
+            </SignedOut>
+          </div>
+        )}
       </SidebarFooter>
     </Sidebar>
   );

@@ -28,9 +28,17 @@ export const Textarea = ({
   messages,
 }: InputProps) => {
   return (
-    <div className="relative w-full">
+    <div
+      className={cn(
+        "relative w-full order-1",
+        messages.length > 0 && "order-2"
+      )}
+    >
       <ShadcnTextarea
-        className={cn("resize-none bg-muted/50 border-2 border-border backdrop-blur-sm w-full rounded-2xl pr-12 pt-4 pb-16 focus-visible:ring-0 focus-visible:border-border", messages.length > 0 && "rounded-b-none")}
+        className={cn(
+          "resize-none bg-muted/50 border-2 border-border backdrop-blur-sm w-full rounded-2xl pr-12 pt-4 pb-16 focus-visible:ring-0 focus-visible:border-border",
+          messages.length > 0 && "rounded-b-none"
+        )}
         value={input}
         autoFocus
         placeholder={"Say something..."}

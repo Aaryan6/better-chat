@@ -12,6 +12,17 @@ import { Textarea } from "./textarea";
 import { cn } from "@/lib/utils";
 import { Header } from "./header";
 import { mutate } from "swr";
+import Link from "next/link";
+import { XIcon } from "lucide-react";
+import { Button } from "./ui/button";
+
+// Function to get credits from cookies
+const getCreditsFromCookies = (): number => {
+  if (typeof window === "undefined") return 10;
+  const cookies = document.cookie;
+  const creditMatch = cookies.match(/anonymous_credits=(\d+)/);
+  return creditMatch ? parseInt(creditMatch[1]) : 10;
+};
 
 const SELECTED_MODEL_KEY = "better-chat-model";
 
@@ -36,6 +47,7 @@ export default function Chat({
 }) {
   const [selectedModel, setSelectedModel] = useState<modelID>(getInitialModel);
   const [isMounted, setIsMounted] = useState(false);
+  const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
 
   const {
     messages,
@@ -58,15 +70,37 @@ export default function Chat({
     sendExtraMessageFields: true,
     onResponse: (response) => {
       if (!response.ok) {
-        toast.error("Failed to get response from server", {
-          position: "top-center",
-          richColors: true,
-        });
+        // Handle credit exhaustion
+        if (response.status === 403) {
+          response.json().then((data) => {
+            if (data.requiresLogin) {
+              toast.error(data.message, {
+                position: "top-center",
+                richColors: true,
+                duration: 6000,
+                action: {
+                  label: "Sign In",
+                  onClick: () => {
+                    window.location.href = "/sign-in";
+                  },
+                },
+              });
+              setRemainingCredits(0);
+              return;
+            }
+          });
+        }
         return;
       }
 
       const headers = response.headers;
       const responseId = headers.get("X-Chat-Id");
+      const creditsHeader = headers.get("X-Remaining-Credits");
+
+      // Update remaining credits if header is present
+      if (creditsHeader) {
+        setRemainingCredits(parseInt(creditsHeader));
+      }
 
       // Update URL with chatId from response if needed
       if (messages.length === 0 && responseId) {
@@ -78,21 +112,15 @@ export default function Chat({
     },
     onError: (error) => {
       console.log("error", error);
-      const errorMessage =
-        error.message.length > 0
-          ? error.message
-          : "An error occurred, please try again later.";
-
-      toast.error(errorMessage, {
-        position: "top-center",
-        richColors: true,
-      });
     },
   });
 
-  // Use effect to set mounted state
+  // Use effect to set mounted state and initialize credits
   useEffect(() => {
     setIsMounted(true);
+    // Initialize credits for anonymous users
+    const credits = getCreditsFromCookies();
+    setRemainingCredits(credits);
   }, []);
 
   // Save selected model to localStorage whenever it changes
@@ -168,16 +196,62 @@ export default function Chat({
           messages.length > 0 && "absolute bottom-0 inset-x-0 max-w-3xl pt-0"
         )}
       >
-        <Textarea
-          selectedModel={selectedModel}
-          setSelectedModel={setSelectedModel}
-          handleInputChange={handleInputChange}
-          input={input}
-          isLoading={isLoading}
-          status={status}
-          stop={stop}
-          messages={messages}
-        />
+        <div className="space-y-3 grid gap-2">
+          {remainingCredits !== null && remainingCredits <= 10 && (
+            <div
+              className={cn(
+                "mx-auto max-w-md w-full order-2",
+                messages.length > 0 && "order-1"
+              )}
+            >
+              <div className="flex items-center justify-between p-3 bg-gradient-to-r from-muted to-muted/50 border border-secondary rounded-lg shadow-sm">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-primary">
+                    {remainingCredits > 0 ? (
+                      `${remainingCredits} free message${
+                        remainingCredits !== 1 ? "s" : ""
+                      } left`
+                    ) : (
+                      <span className="text-primary">
+                        Sign In to continue chatting
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/sign-in"
+                    className="text-xs bg-background hover:bg-primary/80 hover:text-white text-primary px-3 py-1.5 rounded-md transition-colors duration-200 font-medium"
+                  >
+                    {"Sign In"}
+                  </Link>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="text-primary hover:text-primary/80 w-6 h-6"
+                    type="button"
+                    onClick={() => {
+                      setRemainingCredits(null);
+                    }}
+                  >
+                    <XIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+          <Textarea
+            selectedModel={selectedModel}
+            setSelectedModel={setSelectedModel}
+            handleInputChange={handleInputChange}
+            input={input}
+            isLoading={isLoading}
+            status={status}
+            stop={stop}
+            messages={messages}
+          />
+        </div>
       </form>
     </div>
   );

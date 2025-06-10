@@ -88,13 +88,64 @@ export async function GET(request: Request) {
 
 export async function POST(req: Request) {
   const { userId } = await auth();
-
-  if (!userId) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
   const { messages, selectedModel, chatId } = await req.json();
 
+  // Handle anonymous users with credit system
+  if (!userId) {
+    const cookies = req.headers.get("cookie") || "";
+    const creditMatch = cookies.match(/anonymous_credits=(\d+)/);
+    const currentCredits = creditMatch ? parseInt(creditMatch[1]) : 10;
+
+    if (currentCredits <= 0) {
+      return new Response(
+        JSON.stringify({
+          error: "Credits exhausted",
+          message:
+            "You've used all your free credits. Please sign in to continue chatting.",
+          requiresLogin: true,
+        }),
+        {
+          status: 403,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    // Deduct one credit for anonymous users
+    const newCredits = currentCredits - 1;
+    const response = await handleChatRequest(
+      messages,
+      selectedModel,
+      chatId,
+      null,
+      newCredits
+    );
+
+    // Set the updated credits in cookie
+    response.headers.set(
+      "Set-Cookie",
+      `anonymous_credits=${newCredits}; Path=/; Max-Age=${
+        7 * 24 * 60 * 60
+      }; SameSite=Lax`
+    );
+    response.headers.set("X-Remaining-Credits", newCredits.toString());
+
+    return response;
+  }
+
+  // Handle authenticated users (no credit limit)
+  return handleChatRequest(messages, selectedModel, chatId, userId);
+}
+
+async function handleChatRequest(
+  messages: any[],
+  selectedModel: modelID,
+  chatId: string,
+  userId: string | null,
+  remainingCredits?: number
+) {
   if (!chatId) {
     return new Response("chatId is required", { status: 400 });
   }
@@ -113,16 +164,20 @@ export async function POST(req: Request) {
       ? lastUserMessage.content
       : JSON.stringify(lastUserMessage.content); // Fallback for non-string content
 
-  const chat = await getChat(chatId);
-  if (!chat) {
-    await createChat(chatId, userId, lastUserMessageContentString);
+  // Only save to database if user is authenticated
+  if (userId) {
+    const chat = await getChat(chatId);
+    if (!chat) {
+      await createChat(chatId, userId, lastUserMessageContentString);
+    }
+    await saveMessage(chatId, "user", lastUserMessageContentString);
   }
-
-  await saveMessage(chatId, "user", lastUserMessageContentString);
 
   // --- Resumable stream logic ---
   const streamId = uuidv4();
-  await saveStreamId(chatId, streamId);
+  if (userId) {
+    await saveStreamId(chatId, streamId);
+  }
 
   const stream = createDataStream({
     execute: (dataStream) => {
@@ -130,7 +185,11 @@ export async function POST(req: Request) {
         model: model.languageModel(selectedModel),
         system: `You are a helpful assistant. Be helpful and concise. Use markdown to format your responses.
           Rules:
-          - Use markdown for code blocks, wrap the code in \`\`\` and add the programming language to the code block.`,
+          - Use markdown for code blocks, wrap the code in \`\`\` and add the programming language to the code block.${
+            remainingCredits !== undefined
+              ? `\n          - This is an anonymous user with ${remainingCredits} credits remaining. Remind them to sign up for unlimited access.`
+              : ""
+          }`,
         messages: messages,
         // tools: {
         //   getWeather: weatherTool,
@@ -140,15 +199,17 @@ export async function POST(req: Request) {
           delayInMs: 30,
         }),
         onFinish: async ({ text }) => {
-          // Try to save the assistant message first
-          await saveMessage(chatId, "assistant", text);
+          // Only save to database if user is authenticated
+          if (userId) {
+            await saveMessage(chatId, "assistant", text);
 
-          const title = await generateTitleFromMessages({
-            userMessage: lastUserMessageContentString,
-            assistantMessage: text,
-          });
-          if (messages.length < 3) {
-            await updateChatTitle(chatId, title);
+            const title = await generateTitleFromMessages({
+              userMessage: lastUserMessageContentString,
+              assistantMessage: text,
+            });
+            if (messages.length < 3) {
+              await updateChatTitle(chatId, title);
+            }
           }
         },
       });
