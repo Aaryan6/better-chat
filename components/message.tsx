@@ -4,6 +4,7 @@ import type { Message as TMessage } from "ai";
 import { AnimatePresence, motion } from "motion/react";
 import { memo, useCallback, useEffect, useState } from "react";
 import equal from "fast-deep-equal";
+import Image from "next/image";
 
 import { Markdown } from "./markdown";
 import { cn } from "@/lib/utils";
@@ -194,6 +195,7 @@ const PurePreviewMessage = ({
         >
           <div className="flex flex-col w-full space-y-4">
             {message.parts?.map((part, i) => {
+              console.log({ part });
               switch (part.type) {
                 case "text":
                   return (
@@ -244,6 +246,32 @@ const PurePreviewMessage = ({
                             )}
                           </>
                         )}
+                      </div>
+                    </motion.div>
+                  );
+                case "image":
+                  return (
+                    <motion.div
+                      initial={{ y: 5, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      key={`message-${message.id}-part-${i}`}
+                      className="flex flex-row gap-2 items-start w-full pb-4"
+                    >
+                      <div
+                        className={cn("flex flex-col gap-2 relative", {
+                          "bg-secondary text-secondary-foreground px-3 py-2 rounded-tl-xl rounded-tr-xl rounded-bl-xl":
+                            message.role === "user",
+                        })}
+                      >
+                        <div className="relative w-48 h-48 rounded-lg overflow-hidden">
+                          <Image
+                            // @ts-expect-error image part
+                            src={part.image}
+                            alt="User uploaded image"
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
                       </div>
                     </motion.div>
                   );

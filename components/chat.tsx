@@ -49,6 +49,8 @@ export default function Chat({
   const [selectedModel, setSelectedModel] = useState<modelID>(getInitialModel);
   const [isMounted, setIsMounted] = useState(false);
   const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const { user } = useUser();
 
   const {
@@ -158,8 +160,24 @@ export default function Chat({
       return;
     }
 
+    if (isUploading) {
+      toast.error("Please wait for image upload to complete", {
+        position: "top-center",
+        richColors: true,
+      });
+      return;
+    }
+
     try {
-      handleSubmit(e);
+      const submitData = uploadedImage
+        ? { imageUrl: uploadedImage }
+        : undefined;
+      console.log("uploadedImage", submitData);
+      handleSubmit(e, { data: submitData });
+      // Clear the uploaded image after sending
+      if (uploadedImage) {
+        setUploadedImage(null);
+      }
     } catch (error: any) {
       toast.error(
         `Failed to send message: ${error.message || "Unknown error"}`,
@@ -171,7 +189,20 @@ export default function Chat({
     }
   };
 
-  const isLoading = status === "streaming" || status === "submitted";
+  const handleImageUpload = (imageUrl: string) => {
+    setUploadedImage(imageUrl);
+  };
+
+  const handleRemoveImage = () => {
+    setUploadedImage(null);
+  };
+
+  const handleUploadStateChange = (uploading: boolean) => {
+    setIsUploading(uploading);
+  };
+
+  const isLoading =
+    status === "streaming" || status === "submitted" || isUploading;
 
   // Don't render anything on the server
   if (!isMounted) {
@@ -260,6 +291,10 @@ export default function Chat({
             status={status}
             stop={stop}
             messages={messages}
+            onImageUpload={handleImageUpload}
+            uploadedImage={uploadedImage}
+            onRemoveImage={handleRemoveImage}
+            onUploadStateChange={handleUploadStateChange}
           />
         </div>
       </form>

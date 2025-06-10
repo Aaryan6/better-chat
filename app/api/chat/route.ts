@@ -88,7 +88,7 @@ export async function GET(request: Request) {
 
 export async function POST(req: Request) {
   const { userId } = await auth();
-  const { messages, selectedModel, chatId } = await req.json();
+  const { messages, selectedModel, chatId, data } = await req.json();
 
   // Handle anonymous users with credit system
   if (!userId) {
@@ -120,7 +120,8 @@ export async function POST(req: Request) {
       selectedModel,
       chatId,
       null,
-      newCredits
+      newCredits,
+      data
     );
 
     // Set the updated credits in cookie
@@ -136,7 +137,14 @@ export async function POST(req: Request) {
   }
 
   // Handle authenticated users (no credit limit)
-  return handleChatRequest(messages, selectedModel, chatId, userId);
+  return handleChatRequest(
+    messages,
+    selectedModel,
+    chatId,
+    userId,
+    undefined,
+    data
+  );
 }
 
 async function handleChatRequest(
@@ -144,10 +152,36 @@ async function handleChatRequest(
   selectedModel: modelID,
   chatId: string,
   userId: string | null,
-  remainingCredits?: number
+  remainingCredits?: number,
+  data?: any
 ) {
   if (!chatId) {
     return new Response("chatId is required", { status: 400 });
+  }
+
+  // Prepare messages for the AI model
+  let processedMessages = messages;
+
+  // If there's an image in the data, modify the last user message
+  console.log({ data });
+  if (data?.imageUrl) {
+    const lastUserMessage = messages
+      .filter((m: UIMessage) => m.role === "user")
+      .pop();
+
+    if (lastUserMessage) {
+      // Create a new messages array with the modified last message
+      processedMessages = [
+        ...messages.slice(0, -1),
+        {
+          role: "user",
+          content: [
+            { type: "text", text: lastUserMessage.content },
+            { type: "image", image: data.imageUrl },
+          ],
+        },
+      ];
+    }
   }
 
   const lastUserMessage = messages
@@ -181,16 +215,32 @@ async function handleChatRequest(
 
   const stream = createDataStream({
     execute: (dataStream) => {
+      console.log(
+        "Processed messages sent to AI:",
+        JSON.stringify(processedMessages, null, 2)
+      );
+      console.log("Selected model:", selectedModel);
+      console.log("Has image:", !!data?.imageUrl);
+
+      // Ensure we're using a vision-capable model when image is present
+      const modelToUse = data?.imageUrl
+        ? "gemini-2.5-pro-preview-05-06" // Use Gemini for vision tasks
+        : selectedModel;
+
+      console.log("Final model used:", modelToUse);
+
       const result = streamText({
-        model: model.languageModel(selectedModel),
+        model: model.languageModel(modelToUse),
         system: `You are a helpful assistant. Be helpful and concise. Use markdown to format your responses.
           Rules:
-          - Use markdown for code blocks, wrap the code in \`\`\` and add the programming language to the code block.${
+          - Use markdown for code blocks, wrap the code in \`\`\` and add the programming language to the code block.
+          - When analyzing images, be descriptive and helpful. Explain what you see in detail.
+          - You have vision capabilities and can analyze images provided by users.${
             remainingCredits !== undefined
               ? `\n          - This is an anonymous user with ${remainingCredits} credits remaining. Remind them to sign up for unlimited access.`
               : ""
           }`,
-        messages: messages,
+        messages: processedMessages,
         // tools: {
         //   getWeather: weatherTool,
         // },

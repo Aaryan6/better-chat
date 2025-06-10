@@ -1,10 +1,14 @@
 import { modelID } from "@/ai/providers";
 import { Textarea as ShadcnTextarea } from "@/components/ui/textarea";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Paperclip, X } from "lucide-react";
 import { ModelPicker } from "./model-picker";
 import { Button } from "./ui/button";
 import { UIMessage } from "ai";
 import { cn } from "@/lib/utils";
+import { useUploadThing } from "@/lib/uploadthing";
+import { useState, useRef } from "react";
+import { toast } from "sonner";
+import Image from "next/image";
 
 interface InputProps {
   input: string;
@@ -15,6 +19,10 @@ interface InputProps {
   selectedModel: modelID;
   setSelectedModel: (model: modelID) => void;
   messages: UIMessage[];
+  onImageUpload?: (imageUrl: string) => void;
+  uploadedImage?: string | null;
+  onRemoveImage?: () => void;
+  onUploadStateChange?: (isUploading: boolean) => void;
 }
 
 export const Textarea = ({
@@ -26,7 +34,51 @@ export const Textarea = ({
   selectedModel,
   setSelectedModel,
   messages,
+  onImageUpload,
+  uploadedImage,
+  onRemoveImage,
+  onUploadStateChange,
 }: InputProps) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { startUpload } = useUploadThing("imageUploader", {
+    onClientUploadComplete: (res: any) => {
+      if (res && res[0] && onImageUpload) {
+        onImageUpload(res[0].url);
+        toast.success("Image uploaded successfully!");
+      }
+      setIsUploading(false);
+      onUploadStateChange?.(false);
+    },
+    onUploadError: (error: any) => {
+      console.error("Upload error:", error);
+      toast.error("Failed to upload image");
+      setIsUploading(false);
+      onUploadStateChange?.(false);
+    },
+  });
+
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+
+    setIsUploading(true);
+    onUploadStateChange?.(true);
+    await startUpload([file]);
+  };
+
+  const triggerFileSelect = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div
       className={cn(
@@ -34,6 +86,28 @@ export const Textarea = ({
         messages.length > 0 && "order-2"
       )}
     >
+      {uploadedImage && (
+        <div className="mb-2 relative inline-block">
+          <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
+            <Image
+              src={uploadedImage}
+              alt="Uploaded image"
+              fill
+              className="object-cover"
+            />
+            <Button
+              type="button"
+              onClick={onRemoveImage}
+              size="icon"
+              variant="destructive"
+              className="absolute -top-2 -right-2 w-6 h-6 rounded-full"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       <ShadcnTextarea
         className={cn(
           "resize-none bg-muted/50 border-2 border-border backdrop-blur-sm w-full rounded-2xl pr-12 pt-4 pb-16 focus-visible:ring-0 focus-visible:border-border",
@@ -41,7 +115,11 @@ export const Textarea = ({
         )}
         value={input}
         autoFocus
-        placeholder={"Say something..."}
+        placeholder={
+          uploadedImage
+            ? "Ask something about this image..."
+            : "Say something..."
+        }
         // @ts-expect-error err
         onChange={handleInputChange}
         onKeyDown={(e) => {
@@ -55,10 +133,30 @@ export const Textarea = ({
           }
         }}
       />
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
+
       <ModelPicker
         setSelectedModel={setSelectedModel}
         selectedModel={selectedModel}
       />
+
+      <Button
+        type="button"
+        onClick={triggerFileSelect}
+        disabled={isUploading || isLoading}
+        size="icon"
+        variant="ghost"
+        className="absolute left-2 bottom-2 rounded-full p-2 hover:bg-muted"
+      >
+        <Paperclip className={cn("h-4 w-4", isUploading && "animate-spin")} />
+      </Button>
 
       {status === "streaming" || status === "submitted" ? (
         <Button
@@ -89,7 +187,7 @@ export const Textarea = ({
       ) : (
         <Button
           type="submit"
-          disabled={isLoading || !input.trim()}
+          disabled={isLoading || !input.trim() || isUploading}
           size={"icon"}
           className="absolute right-2 bottom-2 rounded-full p-2 bg-black hover:bg-zinc-800 disabled:bg-zinc-300 disabled:dark:bg-zinc-700 dark:disabled:opacity-80 disabled:cursor-not-allowed transition-colors"
         >
