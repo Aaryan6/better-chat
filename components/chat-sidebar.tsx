@@ -39,16 +39,36 @@ interface ChatItem {
 }
 
 export function ChatSidebar() {
-  const { user } = useUser();
-  const { data: chats, isLoading } = useSWR<ChatItem[]>(
+  const { user, isLoaded: userLoaded } = useUser();
+  const {
+    data: chats,
+    isLoading,
+    error,
+  } = useSWR<ChatItem[]>(
     user ? "/api/history" : null,
     async (url: string) => {
       const res = await fetch(url);
-      if (!res.ok) throw new Error("Failed to fetch chat history");
+      if (!res.ok) {
+        // Handle network errors gracefully
+        if (!navigator.onLine) {
+          throw new Error("OFFLINE");
+        }
+        throw new Error("Failed to fetch chat history");
+      }
       return res.json();
+    },
+    {
+      // Reduce retry attempts for offline scenarios
+      errorRetryCount: 1,
+      errorRetryInterval: 5000,
+      // Don't refetch on window focus when offline
+      revalidateOnFocus: navigator.onLine,
     }
   );
   const { chatId } = useParams();
+
+  // Check if we're offline
+  const isOffline = error?.message === "OFFLINE" || !navigator.onLine;
 
   return (
     <Sidebar className="w-full md:w-[var(--sidebar-width)] border-r flex flex-col h-screen">
@@ -68,20 +88,32 @@ export function ChatSidebar() {
       </div>
 
       <SidebarContent className="flex-grow overflow-y-auto p-4 space-y-2">
-        {user && isLoading && (
+        {user && isLoading && !isOffline && (
           <p className="text-xs text-muted-foreground px-2">Loading chats...</p>
         )}
-        {!user && (
+        {!userLoaded && (
+          <p className="text-xs text-muted-foreground px-2">Loading...</p>
+        )}
+        {userLoaded && !user && (
           <p className="text-xs text-muted-foreground text-center px-2 py-4">
-            Sign in to save your chats.
+            {isOffline
+              ? "Offline mode - Start a new chat!"
+              : "Sign in to save your chats."}
           </p>
         )}
-        {!isLoading && chats?.length === 0 && (
+        {isOffline && user && (
+          <p className="text-xs text-muted-foreground text-center px-2 py-4">
+            Offline mode - Chat history unavailable.
+            <br />
+            <span className="text-primary">Start a new chat!</span>
+          </p>
+        )}
+        {!isLoading && !isOffline && chats?.length === 0 && (
           <p className="text-xs text-muted-foreground text-center px-2 py-4">
             No chat history found. Start a new chat!
           </p>
         )}
-        {!isLoading && chats && chats?.length > 0 && (
+        {!isLoading && !isOffline && chats && chats?.length > 0 && (
           <SidebarMenu>
             {chats.map((chat) => (
               <SidebarMenuItem
@@ -119,7 +151,7 @@ export function ChatSidebar() {
       <SidebarSeparator className="ml-0" />
 
       <SidebarFooter className="pb-2">
-        {user ? (
+        {userLoaded && user ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="w-full justify-between">
@@ -150,15 +182,23 @@ export function ChatSidebar() {
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <div className="flex flex-col gap-2">
-            <SignedOut>
-              <SignInButton mode="modal">
-                <Button variant="outline" className="w-full">
-                  Sign In
-                </Button>
-              </SignInButton>
-            </SignedOut>
-          </div>
+          userLoaded && (
+            <div className="flex flex-col gap-2">
+              <SignedOut>
+                {!isOffline ? (
+                  <SignInButton mode="modal">
+                    <Button variant="outline" className="w-full">
+                      Sign In
+                    </Button>
+                  </SignInButton>
+                ) : (
+                  <Button variant="outline" className="w-full" disabled>
+                    Offline Mode
+                  </Button>
+                )}
+              </SignedOut>
+            </div>
+          )
         )}
       </SidebarFooter>
     </Sidebar>

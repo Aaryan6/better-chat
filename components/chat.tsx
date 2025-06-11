@@ -117,7 +117,16 @@ export default function Chat({
       }
     },
     onError: (error) => {
-      console.log("error", error);
+      console.log("Chat error:", error);
+      toast.error(
+        typeof error === "string"
+          ? error
+          : error.message || "An error occurred",
+        {
+          position: "top-center",
+          richColors: true,
+        }
+      );
     },
   });
 
@@ -201,13 +210,12 @@ export default function Chat({
     setIsUploading(uploading);
   };
 
-  const isLoading =
-    status === "streaming" || status === "submitted" || isUploading;
-
   // Don't render anything on the server
   if (!isMounted) {
     return null;
   }
+
+  console.log({ status });
 
   return (
     <div
@@ -224,7 +232,7 @@ export default function Chat({
       ) : (
         <Messages
           messages={messages}
-          isLoading={isLoading}
+          isLoading={status === "streaming"}
           status={status}
           setMessages={setMessages}
           reload={reload}
@@ -287,7 +295,7 @@ export default function Chat({
             setSelectedModel={setSelectedModel}
             handleInputChange={handleInputChange}
             input={input}
-            isLoading={isLoading}
+            isLoading={status === "streaming"}
             status={status}
             stop={stop}
             messages={messages}

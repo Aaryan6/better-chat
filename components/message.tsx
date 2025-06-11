@@ -195,7 +195,6 @@ const PurePreviewMessage = ({
         >
           <div className="flex flex-col w-full space-y-4">
             {message.parts?.map((part, i) => {
-              console.log({ part });
               switch (part.type) {
                 case "text":
                   return (
@@ -249,7 +248,7 @@ const PurePreviewMessage = ({
                       </div>
                     </motion.div>
                   );
-                case "image":
+                case "file":
                   return (
                     <motion.div
                       initial={{ y: 5, opacity: 0 }}

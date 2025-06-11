@@ -87,7 +87,17 @@ export async function GET(request: Request) {
 }
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
+  let userId: string | null = null;
+
+  // Try to get userId, but don't fail if authentication is unavailable (offline)
+  try {
+    const authResult = await auth();
+    userId = authResult.userId;
+  } catch (error) {
+    console.log("Authentication failed, proceeding as anonymous user:", error);
+    // userId remains null, which triggers anonymous user flow
+  }
+
   const { messages, selectedModel, chatId, data } = await req.json();
 
   // Handle anonymous users with credit system
@@ -222,24 +232,32 @@ async function handleChatRequest(
       console.log("Selected model:", selectedModel);
       console.log("Has image:", !!data?.imageUrl);
 
-      // Ensure we're using a vision-capable model when image is present
-      const modelToUse = data?.imageUrl
-        ? "gemini-2.5-pro-preview-05-06" // Use Gemini for vision tasks
-        : selectedModel;
+      // For offline usage, always use the selected model (local Ollama)
+      // Note: Local models may not support vision, so we'll handle images as text descriptions
+      const modelToUse = selectedModel;
 
       console.log("Final model used:", modelToUse);
 
-      const result = streamText({
-        model: model.languageModel(modelToUse),
-        system: `You are a helpful assistant. Be helpful and concise. Use markdown to format your responses.
+      // If there's an image but we're using a local model, add a note about image limitations
+      let systemPrompt = `You are a helpful assistant. Be helpful and concise. Use markdown to format your responses.
           Rules:
           - Use markdown for code blocks, wrap the code in \`\`\` and add the programming language to the code block.
-          - When analyzing images, be descriptive and helpful. Explain what you see in detail.
-          - You have vision capabilities and can analyze images provided by users.${
+          - You have reasoning capabilities and can think through problems step by step.${
             remainingCredits !== undefined
               ? `\n          - This is an anonymous user with ${remainingCredits} credits remaining. Remind them to sign up for unlimited access.`
               : ""
-          }`,
+          }`;
+
+      if (
+        data?.imageUrl &&
+        (modelToUse === "deepseek-r1:7b" || modelToUse.includes("ollama"))
+      ) {
+        systemPrompt += `\n          - Note: Image analysis is not available with the local model. If a user has shared an image, let them know that you cannot see images in offline mode, but you're happy to help with any text-based questions.`;
+      }
+
+      const result = streamText({
+        model: model.languageModel(modelToUse),
+        system: systemPrompt,
         messages: processedMessages,
         // tools: {
         //   getWeather: weatherTool,
@@ -249,6 +267,7 @@ async function handleChatRequest(
           delayInMs: 30,
         }),
         onFinish: async ({ text }) => {
+          console.log("Stream finished, saving message...");
           // Only save to database if user is authenticated
           if (userId) {
             await saveMessage(chatId, "assistant", text);
@@ -261,6 +280,7 @@ async function handleChatRequest(
               await updateChatTitle(chatId, title);
             }
           }
+          console.log("Message saved, stream complete");
         },
       });
       result.mergeIntoDataStream(dataStream, { sendReasoning: true });
@@ -281,8 +301,10 @@ async function handleChatRequest(
 }
 
 function errorHandler(error: unknown) {
+  console.error("Chat API Error:", error);
+
   if (error == null) {
-    return "unknown error";
+    return "Unknown error occurred";
   }
 
   if (typeof error === "string") {
@@ -290,7 +312,24 @@ function errorHandler(error: unknown) {
   }
 
   if (error instanceof Error) {
-    return error.message;
+    // Check for common Ollama connection errors
+    if (
+      error.message.includes("ECONNREFUSED") ||
+      error.message.includes("fetch failed") ||
+      error.message.includes("localhost:11434")
+    ) {
+      return "Failed to connect to local AI model. Please ensure Ollama is running:\n\n```bash\nollama serve\n```\n\nThen verify your model is available:\n```bash\nollama list\n```";
+    }
+
+    // Check for model not found errors
+    if (
+      error.message.includes("model") &&
+      error.message.includes("not found")
+    ) {
+      return "Local AI model not found. Please ensure deepseek-r1:7b is installed:\n\n```bash\nollama pull deepseek-r1:7b\n```";
+    }
+
+    return `Error: ${error.message}`;
   }
 
   return JSON.stringify(error);
