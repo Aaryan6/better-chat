@@ -1,10 +1,11 @@
-// Utility for managing chat stream IDs (resumable streams)
+"use server";
+
 import { db } from "@/lib/db";
 import { stream as streamTable } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { saveStreamId } from "@/db/queries";
 import { generateText } from "ai";
-import { defaultModel, model, titleModel } from "@/ai/providers";
+import { model, titleModel } from "@/ai/providers";
 
 // Maintain appendStreamId for backward compatibility
 export async function appendStreamId({
@@ -40,23 +41,17 @@ export async function loadStreams(chatId: string): Promise<string[]> {
 
 export async function generateTitleFromMessages({
   userMessage,
-  assistantMessage,
 }: {
   userMessage: string;
-  assistantMessage: string;
 }) {
   const { text } = await generateText({
     model: model.languageModel(titleModel),
-    prompt: `Generate a title short title under 10 words for the following chat:\n
-    user: ${userMessage}\n
-    assistant: ${assistantMessage}
-    
-    ---
+    prompt: `Generate a title short title under 10 words for this query: ${userMessage}\n
     
     Rules:
     - no quotation marks
     - no markdown, html, new lines, or special characters
-    - don't show thinking text
+    - keep it short and concise
     `,
     maxTokens: 100,
   });

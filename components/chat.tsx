@@ -16,6 +16,18 @@ import Link from "next/link";
 import { XIcon } from "lucide-react";
 import { Button } from "./ui/button";
 import { useUser } from "@clerk/nextjs";
+import { v4 as uuidv4 } from "uuid";
+import { UIMessage } from "ai";
+import { createAIMessage, createUserMessage } from "@/utils/helpers";
+import {
+  createChat,
+  saveMessage,
+  saveStreamId,
+  saveMessageSafely,
+  saveStreamIdSafely,
+} from "@/db/queries";
+import { generateTitleFromMessages } from "@/utils/chat-store";
+import { usePathname } from "next/navigation";
 
 // Function to get credits from cookies
 const getCreditsFromCookies = (): number => {
@@ -51,13 +63,16 @@ export default function Chat({
   const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isChatCreated, setIsChatCreated] = useState(false);
   const { user } = useUser();
+  const pathname = usePathname();
+
+  console.log({ initialMessages });
 
   const {
     messages,
     input,
     handleInputChange,
-    handleSubmit,
     status,
     stop,
     experimental_resume,
@@ -71,7 +86,6 @@ export default function Chat({
     maxSteps: 5,
     body: {
       selectedModel,
-      chatId,
     },
     sendExtraMessageFields: true,
     onResponse: (response) => {
@@ -100,7 +114,6 @@ export default function Chat({
       }
 
       const headers = response.headers;
-      const responseId = headers.get("X-Chat-Id");
       const creditsHeader = headers.get("X-Remaining-Credits");
 
       // Update remaining credits if header is present
@@ -108,12 +121,21 @@ export default function Chat({
         setRemainingCredits(parseInt(creditsHeader));
       }
 
-      // Update URL with chatId from response if needed
-      if (messages.length === 0 && responseId) {
-        window.history.replaceState({}, "", `/chat/${responseId}`);
-      }
       if (messages.length < 3) {
         mutate("/api/history");
+      }
+    },
+    onFinish: async (result) => {
+      const aiMessage = createAIMessage({
+        id: uuidv4(),
+        content: result.content,
+        parts: result.parts || [],
+        role: result.role,
+      });
+      console.log({ aiMessage });
+      if (user) {
+        // Chat already exists at this point, save directly
+        await saveMessage(aiMessage, chatId);
       }
     },
     onError: (error) => {
@@ -130,15 +152,18 @@ export default function Chat({
     },
   });
 
-  // Use effect to set mounted state and initialize credits
   useEffect(() => {
     setIsMounted(true);
     // Initialize credits for anonymous users
     const credits = getCreditsFromCookies();
     setRemainingCredits(credits);
-  }, []);
 
-  // Save selected model to localStorage whenever it changes
+    // If there are initial messages, chat already exists
+    if (initialMessages.length > 0) {
+      setIsChatCreated(true);
+    }
+  }, [initialMessages.length]);
+
   useEffect(() => {
     if (isMounted) {
       try {
@@ -177,13 +202,57 @@ export default function Chat({
       return;
     }
 
+    if (pathname === "/" && user) {
+      window.history.replaceState({}, "", `/chat/${chatId}`);
+    }
+
     try {
-      const submitData = uploadedImage
-        ? { imageUrl: uploadedImage }
-        : undefined;
-      console.log("uploadedImage", submitData);
-      handleSubmit(e, { data: submitData });
-      // Clear the uploaded image after sending
+      const userMessage = createUserMessage({
+        id: uuidv4(),
+        content: input,
+      });
+
+      // --- Resumable stream logic ---
+      const streamId = uuidv4();
+
+      // Start streaming immediately without waiting for DB operations
+      append(userMessage, {
+        data: {
+          streamId,
+        },
+      });
+
+      // Handle DB operations asynchronously after streaming starts
+      if (user) {
+        // Use setTimeout to ensure this happens after the append call
+        setTimeout(async () => {
+          try {
+            if (!isChatCreated && messages.length === 0) {
+              // First message - need to create chat and save user message
+              const title = await generateTitleFromMessages({
+                userMessage: userMessage.content,
+              });
+
+              // Use safe message save that ensures chat exists
+              await saveMessageSafely(userMessage, chatId, user.id, title);
+              await saveStreamIdSafely(chatId, streamId, user.id, title);
+
+              console.log({ title, chatCreated: true });
+              setIsChatCreated(true);
+            } else {
+              // Subsequent messages - just save the user message directly
+              await saveMessage(userMessage, chatId);
+              // Save stream ID (chat already exists)
+              await saveStreamId(chatId, streamId);
+            }
+          } catch (error) {
+            console.error("Background DB operation failed:", error);
+            // Don't show error to user as streaming has already started
+          }
+        }, 0);
+      }
+
+      console.log({ msg: messages.length, usermsg: userMessage });
       if (uploadedImage) {
         setUploadedImage(null);
       }
@@ -214,8 +283,6 @@ export default function Chat({
   if (!isMounted) {
     return null;
   }
-
-  console.log({ status });
 
   return (
     <div

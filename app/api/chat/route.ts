@@ -1,14 +1,7 @@
 import { model, modelID } from "@/ai/providers";
 import { weatherTool } from "@/ai/tools";
-import {
-  createChat,
-  getChat,
-  getLastMessage,
-  saveMessage,
-  saveStreamId,
-  updateChatTitle,
-} from "@/db/queries";
-import { generateTitleFromMessages, loadStreams } from "@/utils/chat-store";
+import { getLastMessage } from "@/db/queries";
+import { loadStreams } from "@/utils/chat-store";
 import { auth } from "@clerk/nextjs/server";
 import { createDataStream, smoothStream, streamText, UIMessage } from "ai";
 import { after } from "next/server";
@@ -41,8 +34,6 @@ export async function GET(request: Request) {
   }
 
   const streamIds = await loadStreams(chatId);
-
-  console.log({ streamIds });
 
   if (!streamIds.length) {
     return new Response("No streams found", { status: 404 });
@@ -98,7 +89,10 @@ export async function POST(req: Request) {
     // userId remains null, which triggers anonymous user flow
   }
 
-  const { messages, selectedModel, chatId, data } = await req.json();
+  const { messages, selectedModel, data, id: chatId } = await req.json();
+  console.log({ messages, selectedModel, chatId, data });
+  const streamId = data?.streamId;
+  console.log({ streamId });
 
   // Handle anonymous users with credit system
   if (!userId) {
@@ -125,14 +119,13 @@ export async function POST(req: Request) {
 
     // Deduct one credit for anonymous users
     const newCredits = currentCredits - 1;
-    const response = await handleChatRequest(
+    const response = await handleChatRequest({
       messages,
       selectedModel,
       chatId,
-      null,
-      newCredits,
-      data
-    );
+      data,
+      streamId,
+    });
 
     // Set the updated credits in cookie
     response.headers.set(
@@ -147,24 +140,22 @@ export async function POST(req: Request) {
   }
 
   // Handle authenticated users (no credit limit)
-  return handleChatRequest(
-    messages,
-    selectedModel,
-    chatId,
-    userId,
-    undefined,
-    data
-  );
+  return handleChatRequest({ messages, selectedModel, chatId, data, streamId });
 }
 
-async function handleChatRequest(
-  messages: any[],
-  selectedModel: modelID,
-  chatId: string,
-  userId: string | null,
-  remainingCredits?: number,
-  data?: any
-) {
+async function handleChatRequest({
+  messages,
+  selectedModel,
+  chatId,
+  streamId,
+  data,
+}: {
+  messages: any[];
+  selectedModel: modelID;
+  chatId: string;
+  streamId: string;
+  data?: any;
+}) {
   if (!chatId) {
     return new Response("chatId is required", { status: 400 });
   }
@@ -173,7 +164,6 @@ async function handleChatRequest(
   let processedMessages = messages;
 
   // If there's an image in the data, modify the last user message
-  console.log({ data });
   if (data?.imageUrl) {
     const lastUserMessage = messages
       .filter((m: UIMessage) => m.role === "user")
@@ -202,58 +192,14 @@ async function handleChatRequest(
     return new Response("No user message found", { status: 400 });
   }
 
-  // Ensure lastUserMessage.content is a string for database saving
-  const lastUserMessageContentString =
-    typeof lastUserMessage.content === "string"
-      ? lastUserMessage.content
-      : JSON.stringify(lastUserMessage.content); // Fallback for non-string content
-
-  // Only save to database if user is authenticated
-  if (userId) {
-    const chat = await getChat(chatId);
-    if (!chat) {
-      await createChat(chatId, userId, lastUserMessageContentString);
-    }
-    await saveMessage(chatId, "user", lastUserMessageContentString);
-  }
-
-  // --- Resumable stream logic ---
-  const streamId = uuidv4();
-  if (userId) {
-    await saveStreamId(chatId, streamId);
-  }
-
   const stream = createDataStream({
     execute: (dataStream) => {
-      console.log(
-        "Processed messages sent to AI:",
-        JSON.stringify(processedMessages, null, 2)
-      );
-      console.log("Selected model:", selectedModel);
-      console.log("Has image:", !!data?.imageUrl);
-
-      // For offline usage, always use the selected model (local Ollama)
-      // Note: Local models may not support vision, so we'll handle images as text descriptions
       const modelToUse = selectedModel;
 
-      console.log("Final model used:", modelToUse);
-
       // If there's an image but we're using a local model, add a note about image limitations
-      let systemPrompt = `You are a helpful assistant. Be helpful and concise. Use markdown to format your responses.
+      const systemPrompt = `You are a helpful assistant. Be helpful and concise. Use markdown to format your responses.
           Rules:
-          - Use markdown for code blocks, wrap the code in \`\`\` and add the programming language to the code block.
-          - You have reasoning capabilities and can think through problems step by step.${
-            remainingCredits !== undefined
-              ? `\n          - This is an anonymous user with ${remainingCredits} credits remaining. Remind them to sign up for unlimited access.`
-              : ""
-          }`;
-
-      if (
-        data?.imageUrl &&
-        (modelToUse === "deepseek-r1:7b" || modelToUse.includes("ollama"))
-      ) {
-        systemPrompt += `\n          - Note: Image analysis is not available with the local model. If a user has shared an image, let them know that you cannot see images in offline mode, but you're happy to help with any text-based questions.`;
-      }
+          - Use markdown for code blocks, wrap the code in \`\`\` and add the programming language to the code block.`;
 
       const result = streamText({
         model: model.languageModel(modelToUse),
@@ -266,22 +212,7 @@ async function handleChatRequest(
           chunking: "word",
           delayInMs: 30,
         }),
-        onFinish: async ({ text }) => {
-          console.log("Stream finished, saving message...");
-          // Only save to database if user is authenticated
-          if (userId) {
-            await saveMessage(chatId, "assistant", text);
-
-            const title = await generateTitleFromMessages({
-              userMessage: lastUserMessageContentString,
-              assistantMessage: text,
-            });
-            if (messages.length < 3) {
-              await updateChatTitle(chatId, title);
-            }
-          }
-          console.log("Message saved, stream complete");
-        },
+        onFinish: async ({ text }) => {},
       });
       result.mergeIntoDataStream(dataStream, { sendReasoning: true });
     },
@@ -301,8 +232,6 @@ async function handleChatRequest(
 }
 
 function errorHandler(error: unknown) {
-  console.error("Chat API Error:", error);
-
   if (error == null) {
     return "Unknown error occurred";
   }
