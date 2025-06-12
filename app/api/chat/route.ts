@@ -98,7 +98,8 @@ export async function POST(req: Request) {
     // userId remains null, which triggers anonymous user flow
   }
 
-  const { messages, selectedModel, chatId, data } = await req.json();
+  const { messages, selectedModel, chatId } = await req.json();
+  console.log({ messages, selectedModel, chatId });
 
   // Handle anonymous users with credit system
   if (!userId) {
@@ -130,8 +131,7 @@ export async function POST(req: Request) {
       selectedModel,
       chatId,
       null,
-      newCredits,
-      data
+      newCredits
     );
 
     // Set the updated credits in cookie
@@ -147,14 +147,7 @@ export async function POST(req: Request) {
   }
 
   // Handle authenticated users (no credit limit)
-  return handleChatRequest(
-    messages,
-    selectedModel,
-    chatId,
-    userId,
-    undefined,
-    data
-  );
+  return handleChatRequest(messages, selectedModel, chatId, userId, undefined);
 }
 
 async function handleChatRequest(
@@ -167,31 +160,6 @@ async function handleChatRequest(
 ) {
   if (!chatId) {
     return new Response("chatId is required", { status: 400 });
-  }
-
-  // Prepare messages for the AI model
-  let processedMessages = messages;
-
-  // If there's an image in the data, modify the last user message
-  console.log({ data });
-  if (data?.imageUrl) {
-    const lastUserMessage = messages
-      .filter((m: UIMessage) => m.role === "user")
-      .pop();
-
-    if (lastUserMessage) {
-      // Create a new messages array with the modified last message
-      processedMessages = [
-        ...messages.slice(0, -1),
-        {
-          role: "user",
-          content: [
-            { type: "text", text: lastUserMessage.content },
-            { type: "image", image: data.imageUrl },
-          ],
-        },
-      ];
-    }
   }
 
   const lastUserMessage = messages
@@ -225,21 +193,8 @@ async function handleChatRequest(
 
   const stream = createDataStream({
     execute: (dataStream) => {
-      console.log(
-        "Processed messages sent to AI:",
-        JSON.stringify(processedMessages, null, 2)
-      );
-      console.log("Selected model:", selectedModel);
-      console.log("Has image:", !!data?.imageUrl);
-
-      // For offline usage, always use the selected model (local Ollama)
-      // Note: Local models may not support vision, so we'll handle images as text descriptions
-      const modelToUse = selectedModel;
-
-      console.log("Final model used:", modelToUse);
-
       // If there's an image but we're using a local model, add a note about image limitations
-      let systemPrompt = `You are a helpful assistant. Be helpful and concise. Use markdown to format your responses.
+      const systemPrompt = `You are a helpful assistant. Be helpful and concise. Use markdown to format your responses.
           Rules:
           - Use markdown for code blocks, wrap the code in \`\`\` and add the programming language to the code block.
           - You have reasoning capabilities and can think through problems step by step.${
@@ -248,17 +203,10 @@ async function handleChatRequest(
               : ""
           }`;
 
-      if (
-        data?.imageUrl &&
-        (modelToUse === "deepseek-r1:7b" || modelToUse.includes("ollama"))
-      ) {
-        systemPrompt += `\n          - Note: Image analysis is not available with the local model. If a user has shared an image, let them know that you cannot see images in offline mode, but you're happy to help with any text-based questions.`;
-      }
-
       const result = streamText({
-        model: model.languageModel(modelToUse),
+        model: model.languageModel(selectedModel),
         system: systemPrompt,
-        messages: processedMessages,
+        messages: messages,
         // tools: {
         //   getWeather: weatherTool,
         // },

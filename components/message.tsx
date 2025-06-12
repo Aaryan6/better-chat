@@ -202,8 +202,28 @@ const PurePreviewMessage = ({
                       initial={{ y: 5, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
                       key={`message-${message.id}-part-${i}`}
-                      className="flex flex-row gap-2 items-start w-full pb-4"
+                      className="flex flex-col gap-2 items-end w-full pb-4"
                     >
+                      {message.role === "user" &&
+                        message.experimental_attachments &&
+                        message.experimental_attachments.map(
+                          (attachment: any, index: number) => (
+                            <div key={index}>
+                              <div className="flex flex-row gap-2 items-start w-full">
+                                <div className="flex flex-col gap-2 relative">
+                                  <Image
+                                    key={index}
+                                    src={attachment.url}
+                                    alt="User uploaded image"
+                                    width={100}
+                                    height={100}
+                                    className="rounded-md"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        )}
                       <div
                         className={cn("flex flex-col gap-4 relative", {
                           "bg-secondary text-secondary-foreground px-3 py-2 rounded-tl-xl rounded-tr-xl rounded-bl-xl":
@@ -220,58 +240,32 @@ const PurePreviewMessage = ({
                         ) : (
                           <>
                             <Markdown>{part.text}</Markdown>
-                            {message.role === "user" && !isLatestMessage && (
-                              <div className="flex flex-row gap-1 absolute -right-2 -bottom-8 px-2 opacity-0 group-hover/message:opacity-100 transition-opacity">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={handleRetry}
-                                  className="w-6 h-6"
-                                  title="Retry response"
-                                >
-                                  <RefreshCcwIcon className="h-3 w-3" />
-                                </Button>
-
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="w-6 h-6"
-                                  onClick={() => setMode("edit")}
-                                  title="Edit message"
-                                >
-                                  <PencilIcon className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            )}
                           </>
                         )}
                       </div>
-                    </motion.div>
-                  );
-                case "file":
-                  return (
-                    <motion.div
-                      initial={{ y: 5, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      key={`message-${message.id}-part-${i}`}
-                      className="flex flex-row gap-2 items-start w-full pb-4"
-                    >
-                      <div
-                        className={cn("flex flex-col gap-2 relative", {
-                          "bg-secondary text-secondary-foreground px-3 py-2 rounded-tl-xl rounded-tr-xl rounded-bl-xl":
-                            message.role === "user",
-                        })}
-                      >
-                        <div className="relative w-48 h-48 rounded-lg overflow-hidden">
-                          <Image
-                            // @ts-expect-error image part
-                            src={part.image}
-                            alt="User uploaded image"
-                            fill
-                            className="object-cover"
-                          />
+                      {message.role === "user" && !isLatestMessage && (
+                        <div className="flex flex-row gap-1 px-2 opacity-0 group-hover/message:opacity-100 transition-opacity">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={handleRetry}
+                            className="w-6 h-6"
+                            title="Retry response"
+                          >
+                            <RefreshCcwIcon className="h-3 w-3" />
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="w-6 h-6"
+                            onClick={() => setMode("edit")}
+                            title="Edit message"
+                          >
+                            <PencilIcon className="h-3 w-3" />
+                          </Button>
                         </div>
-                      </div>
+                      )}
                     </motion.div>
                   );
                 case "tool-invocation":

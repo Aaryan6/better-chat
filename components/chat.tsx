@@ -16,6 +16,7 @@ import Link from "next/link";
 import { XIcon } from "lucide-react";
 import { Button } from "./ui/button";
 import { useUser } from "@clerk/nextjs";
+import { Attachment } from "ai";
 
 // Function to get credits from cookies
 const getCreditsFromCookies = (): number => {
@@ -178,11 +179,18 @@ export default function Chat({
     }
 
     try {
-      const submitData = uploadedImage
-        ? { imageUrl: uploadedImage }
-        : undefined;
-      console.log("uploadedImage", submitData);
-      handleSubmit(e, { data: submitData });
+      const attachments = uploadedImage
+        ? ([
+            {
+              url: uploadedImage,
+              contentType: "image/*",
+              name: `image-${Date.now()}.png`,
+            },
+          ] as Attachment[])
+        : [];
+      handleSubmit(e, {
+        experimental_attachments: attachments,
+      });
       // Clear the uploaded image after sending
       if (uploadedImage) {
         setUploadedImage(null);
@@ -215,7 +223,7 @@ export default function Chat({
     return null;
   }
 
-  console.log({ status });
+  console.log({ messages });
 
   return (
     <div
