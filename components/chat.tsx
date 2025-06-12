@@ -40,6 +40,13 @@ const getInitialModel = (): modelID => {
   }
 };
 
+interface UploadedFile {
+  url: string;
+  name: string;
+  type: string;
+  size?: number;
+}
+
 export default function Chat({
   chatId,
   initialMessages = [],
@@ -50,7 +57,7 @@ export default function Chat({
   const [selectedModel, setSelectedModel] = useState<modelID>(getInitialModel);
   const [isMounted, setIsMounted] = useState(false);
   const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const { user } = useUser();
 
@@ -171,7 +178,7 @@ export default function Chat({
     }
 
     if (isUploading) {
-      toast.error("Please wait for image upload to complete", {
+      toast.error("Please wait for file upload to complete", {
         position: "top-center",
         richColors: true,
       });
@@ -179,21 +186,30 @@ export default function Chat({
     }
 
     try {
-      const attachments = uploadedImage
-        ? ([
-            {
-              url: uploadedImage,
-              contentType: "image/*",
-              name: `image-${Date.now()}.png`,
-            },
-          ] as Attachment[])
-        : [];
+      const attachments =
+        uploadedFiles.length > 0
+          ? uploadedFiles.map(
+              (file, index) =>
+                ({
+                  url: file.url,
+                  contentType:
+                    file.type === "image"
+                      ? "image/*"
+                      : file.type === "pdf"
+                      ? "application/pdf"
+                      : "text/plain",
+                  name: file.name,
+                } as Attachment)
+            )
+          : [];
+
       handleSubmit(e, {
         experimental_attachments: attachments,
       });
-      // Clear the uploaded image after sending
-      if (uploadedImage) {
-        setUploadedImage(null);
+
+      // Clear the uploaded files after sending
+      if (uploadedFiles.length > 0) {
+        setUploadedFiles([]);
       }
     } catch (error: any) {
       toast.error(
@@ -206,12 +222,12 @@ export default function Chat({
     }
   };
 
-  const handleImageUpload = (imageUrl: string) => {
-    setUploadedImage(imageUrl);
+  const handleFileUpload = (files: UploadedFile[]) => {
+    setUploadedFiles(files);
   };
 
-  const handleRemoveImage = () => {
-    setUploadedImage(null);
+  const handleRemoveFile = (index: number) => {
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleUploadStateChange = (uploading: boolean) => {
@@ -307,9 +323,9 @@ export default function Chat({
             status={status}
             stop={stop}
             messages={messages}
-            onImageUpload={handleImageUpload}
-            uploadedImage={uploadedImage}
-            onRemoveImage={handleRemoveImage}
+            onFileUpload={handleFileUpload}
+            uploadedFiles={uploadedFiles}
+            onRemoveFile={handleRemoveFile}
             onUploadStateChange={handleUploadStateChange}
           />
         </div>

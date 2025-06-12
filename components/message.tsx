@@ -18,6 +18,8 @@ import {
   StopCircle,
   PencilIcon,
   RefreshCcwIcon,
+  FileIcon,
+  FileTextIcon,
 } from "lucide-react";
 import { SpinnerIcon } from "./icons";
 import { Button } from "./ui/button";
@@ -211,14 +213,46 @@ const PurePreviewMessage = ({
                             <div key={index}>
                               <div className="flex flex-row gap-2 items-start w-full">
                                 <div className="flex flex-col gap-2 relative">
-                                  <Image
-                                    key={index}
-                                    src={attachment.url}
-                                    alt="User uploaded image"
-                                    width={100}
-                                    height={100}
-                                    className="rounded-md"
-                                  />
+                                  {attachment.contentType?.startsWith(
+                                    "image/"
+                                  ) ? (
+                                    <Image
+                                      key={index}
+                                      src={attachment.url}
+                                      alt="User uploaded image"
+                                      width={100}
+                                      height={100}
+                                      className="rounded-md"
+                                    />
+                                  ) : (
+                                    <div className="flex items-center gap-3 p-3 bg-background border rounded-lg max-w-sm">
+                                      {attachment.contentType ===
+                                      "application/pdf" ? (
+                                        <FileIcon className="w-8 h-8 text-red-500 flex-shrink-0" />
+                                      ) : (
+                                        <FileTextIcon className="w-8 h-8 text-blue-500 flex-shrink-0" />
+                                      )}
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-medium truncate">
+                                          {attachment.name || "Uploaded file"}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                          {attachment.contentType ===
+                                          "application/pdf"
+                                            ? "PDF Document"
+                                            : "Text File"}
+                                        </div>
+                                      </div>
+                                      <a
+                                        href={attachment.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-primary hover:underline flex-shrink-0"
+                                      >
+                                        View
+                                      </a>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>

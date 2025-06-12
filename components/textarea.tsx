@@ -1,6 +1,6 @@
 import { modelID } from "@/ai/providers";
 import { Textarea as ShadcnTextarea } from "@/components/ui/textarea";
-import { ArrowUp, Paperclip, X } from "lucide-react";
+import { ArrowUp, Paperclip, X, FileText, File } from "lucide-react";
 import { ModelPicker } from "./model-picker";
 import { Button } from "./ui/button";
 import { UIMessage } from "ai";
@@ -9,6 +9,13 @@ import { useUploadThing } from "@/lib/uploadthing";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
 import Image from "next/image";
+
+interface UploadedFile {
+  url: string;
+  name: string;
+  type: string;
+  size?: number;
+}
 
 interface InputProps {
   input: string;
@@ -19,9 +26,9 @@ interface InputProps {
   selectedModel: modelID;
   setSelectedModel: (model: modelID) => void;
   messages: UIMessage[];
-  onImageUpload?: (imageUrl: string) => void;
-  uploadedImage?: string | null;
-  onRemoveImage?: () => void;
+  onFileUpload?: (files: UploadedFile[]) => void;
+  uploadedFiles?: UploadedFile[];
+  onRemoveFile?: (index: number) => void;
   onUploadStateChange?: (isUploading: boolean) => void;
 }
 
@@ -34,18 +41,23 @@ export const Textarea = ({
   selectedModel,
   setSelectedModel,
   messages,
-  onImageUpload,
-  uploadedImage,
-  onRemoveImage,
+  onFileUpload,
+  uploadedFiles = [],
+  onRemoveFile,
   onUploadStateChange,
 }: InputProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { startUpload } = useUploadThing("imageUploader", {
+  const { startUpload: startImageUpload } = useUploadThing("imageUploader", {
     onClientUploadComplete: (res: any) => {
-      if (res && res[0] && onImageUpload) {
-        onImageUpload(res[0].url);
+      if (res && res[0] && onFileUpload) {
+        const newFile: UploadedFile = {
+          url: res[0].url,
+          name: res[0].name || `image-${Date.now()}.png`,
+          type: "image",
+        };
+        onFileUpload([...uploadedFiles, newFile]);
         toast.success("Image uploaded successfully!");
       }
       setIsUploading(false);
@@ -59,24 +71,93 @@ export const Textarea = ({
     },
   });
 
+  const { startUpload: startDocumentUpload } = useUploadThing(
+    "documentUploader",
+    {
+      onClientUploadComplete: (res: any) => {
+        if (res && res[0] && onFileUpload) {
+          const newFile: UploadedFile = {
+            url: res[0].url,
+            name: res[0].name || `document-${Date.now()}`,
+            type: res[0].name?.endsWith(".pdf") ? "pdf" : "text",
+            size: res[0].size,
+          };
+          onFileUpload([...uploadedFiles, newFile]);
+          toast.success("Document uploaded successfully!");
+        }
+        setIsUploading(false);
+        onUploadStateChange?.(false);
+      },
+      onUploadError: (error: any) => {
+        console.error("Upload error:", error);
+        toast.error("Failed to upload document");
+        setIsUploading(false);
+        onUploadStateChange?.(false);
+      },
+    }
+  );
+
   const handleFileSelect = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please select an image file");
-      return;
-    }
-
     setIsUploading(true);
     onUploadStateChange?.(true);
-    await startUpload([file]);
+
+    try {
+      if (file.type.startsWith("image/")) {
+        await startImageUpload([file]);
+      } else if (
+        file.type === "application/pdf" ||
+        file.type.startsWith("text/")
+      ) {
+        await startDocumentUpload([file]);
+      } else {
+        // Check file extension as fallback
+        const fileName = file.name.toLowerCase();
+        if (
+          fileName.endsWith(".txt") ||
+          fileName.endsWith(".md") ||
+          fileName.endsWith(".csv")
+        ) {
+          await startDocumentUpload([file]);
+        } else {
+          toast.error("Please select an image, text, or PDF file");
+          setIsUploading(false);
+          onUploadStateChange?.(false);
+        }
+      }
+    } catch (error) {
+      console.error("File upload error:", error);
+      toast.error("Failed to upload file");
+      setIsUploading(false);
+      onUploadStateChange?.(false);
+    }
   };
 
   const triggerFileSelect = () => {
     fileInputRef.current?.click();
+  };
+
+  const getFileIcon = (type: string) => {
+    switch (type) {
+      case "pdf":
+        return <File className="w-6 h-6 text-red-500" />;
+      case "text":
+        return <FileText className="w-6 h-6 text-blue-500" />;
+      default:
+        return <File className="w-6 h-6 text-gray-500" />;
+    }
+  };
+
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return "";
+    const kb = bytes / 1024;
+    const mb = kb / 1024;
+    if (mb >= 1) return `${mb.toFixed(1)}MB`;
+    return `${kb.toFixed(1)}KB`;
   };
 
   return (
@@ -86,25 +167,54 @@ export const Textarea = ({
         messages.length > 0 && "order-2 rounded-b-none"
       )}
     >
-      {uploadedImage && (
-        <div className="mb-2 relative inline-block">
-          <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
-            <Image
-              src={uploadedImage}
-              alt="Uploaded image"
-              fill
-              className="object-cover"
-            />
-            <Button
-              type="button"
-              onClick={onRemoveImage}
-              size="icon"
-              variant="destructive"
-              className="absolute -top-2 -right-2 w-6 h-6 rounded-full"
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+      {uploadedFiles.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {uploadedFiles.map((file, index) => (
+            <div key={index} className="relative">
+              {file.type === "image" ? (
+                <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
+                  <Image
+                    src={file.url}
+                    alt={file.name}
+                    fill
+                    className="object-cover"
+                  />
+                  <Button
+                    type="button"
+                    onClick={() => onRemoveFile?.(index)}
+                    size="icon"
+                    variant="destructive"
+                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-3 bg-background border rounded-lg max-w-xs">
+                  {getFileIcon(file.type)}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      {file.name}
+                    </div>
+                    {file.size && (
+                      <div className="text-xs text-muted-foreground">
+                        {formatFileSize(file.size)}
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => onRemoveFile?.(index)}
+                    size="icon"
+                    variant="ghost"
+                    className="w-6 h-6 flex-shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
 
@@ -116,8 +226,8 @@ export const Textarea = ({
         value={input}
         autoFocus
         placeholder={
-          uploadedImage
-            ? "Ask something about this image..."
+          uploadedFiles.length > 0
+            ? "Ask something about these files..."
             : "Say something..."
         }
         // @ts-expect-error err
@@ -137,12 +247,17 @@ export const Textarea = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,text/*,.txt,.md,.csv,.pdf"
         onChange={handleFileSelect}
         className="hidden"
       />
 
-      <div className="flex flex-row items-center gap-2 p-2">
+      <div
+        className={cn(
+          "absolute flex items-center gap-2",
+          messages.length > 0 ? "bottom-3 right-3" : "bottom-2 right-2"
+        )}
+      >
         <Button
           type="button"
           onClick={triggerFileSelect}
@@ -189,7 +304,7 @@ export const Textarea = ({
             type="submit"
             disabled={isLoading || !input.trim() || isUploading}
             size={"icon"}
-            className="absolute right-2 bottom-2 rounded-full p-2 bg-black hover:bg-zinc-800 disabled:bg-zinc-300 disabled:dark:bg-zinc-700 dark:disabled:opacity-80 disabled:cursor-not-allowed transition-colors"
+            className="rounded-full p-2 bg-black hover:bg-zinc-800 disabled:bg-zinc-300 disabled:dark:bg-zinc-700 dark:disabled:opacity-80 disabled:cursor-not-allowed transition-colors"
           >
             <ArrowUp className="h-4 w-4 text-white" />
           </Button>
