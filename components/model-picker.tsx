@@ -19,9 +19,9 @@ export const ModelPicker = ({
   setSelectedModel,
 }: ModelPickerProps) => {
   return (
-    <div className="absolute bottom-2 left-2 flex flex-col gap-2">
+    <div className="absolute bottom-2 left-12 flex flex-col gap-2">
       <Select value={selectedModel} onValueChange={setSelectedModel}>
-        <SelectTrigger className="">
+        <SelectTrigger iconDirection="up">
           <SelectValue placeholder="Select a model" />
         </SelectTrigger>
         <SelectContent>

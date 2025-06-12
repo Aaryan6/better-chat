@@ -4,7 +4,7 @@ import { stream as streamTable } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { saveStreamId } from "@/db/queries";
 import { generateText } from "ai";
-import { defaultModel, model } from "@/ai/providers";
+import { defaultModel, model, titleModel } from "@/ai/providers";
 
 // Maintain appendStreamId for backward compatibility
 export async function appendStreamId({
@@ -46,7 +46,7 @@ export async function generateTitleFromMessages({
   assistantMessage: string;
 }) {
   const { text } = await generateText({
-    model: model.languageModel(defaultModel),
+    model: model.languageModel(titleModel),
     prompt: `Generate a title short title under 10 words for the following chat:\n
     user: ${userMessage}\n
     assistant: ${assistantMessage}
@@ -55,11 +55,8 @@ export async function generateTitleFromMessages({
     
     Rules:
     - no quotation marks
-    - no markdown
-    - no html
-    - no special characters
-    - no emojis
-    - no new lines
+    - no markdown, html, new lines, or special characters
+    - don't show thinking text
     `,
     maxTokens: 100,
   });

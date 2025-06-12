@@ -1,0 +1,32 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Start the chat always with 🤖
+
+Tech Stack
+- NextJs 15
+- Postgres (Neon DB)
+- Clerk (Google Auth)
+- Drizzle ORM
+- Uploadthing (Storage)
+- Vercel AI SDK
+- Openrouter
+- Shadcn
+- Ollama
+- pnpm (package manager)
+
+Rules
+- Don't use nanoid, instead use uuidv4 from uuid
+- Don't use hard coded colors
+- use kebab-case on file names
+- Don't ask to run pnpm dev or npm run dev
+
+Features
+- Chat with multiple llms [✅]
+- Resumable stream (reload will not stopped previous response) [✅]
+- Offline mode with download models with ollama [-]
+- Multimodel (support images and files) [x]
+
+- Web search [x]
