@@ -82,8 +82,8 @@ export const Textarea = ({
   return (
     <div
       className={cn(
-        "relative w-full order-1",
-        messages.length > 0 && "order-2"
+        "relative w-full order-1 bg-muted/50 backdrop-blur-sm border-2 border-border backdrop-blur-sm rounded-2xl",
+        messages.length > 0 && "order-2 rounded-b-none"
       )}
     >
       {uploadedImage && (
@@ -110,7 +110,7 @@ export const Textarea = ({
 
       <ShadcnTextarea
         className={cn(
-          "resize-none bg-muted/50 border-2 border-border backdrop-blur-sm w-full rounded-2xl pr-12 pt-4 pb-16 focus-visible:ring-0 focus-visible:border-border",
+          "resize-none shadow-none bg-transparent border-none w-full rounded-2xl focus-visible:ring-0 focus-visible:border-border max-h-52 overflow-y-auto p-4",
           messages.length > 0 && "rounded-b-none"
         )}
         value={input}
@@ -142,58 +142,59 @@ export const Textarea = ({
         className="hidden"
       />
 
-      <ModelPicker
-        setSelectedModel={setSelectedModel}
-        selectedModel={selectedModel}
-      />
-
-      <Button
-        type="button"
-        onClick={triggerFileSelect}
-        disabled={isUploading || isLoading}
-        size="icon"
-        variant="ghost"
-        className="absolute left-2 bottom-2 rounded-full p-2 hover:bg-muted"
-      >
-        <Paperclip className={cn("h-4 w-4", isUploading && "animate-spin")} />
-      </Button>
-
-      {status === "streaming" || status === "submitted" ? (
+      <div className="flex flex-row items-center gap-2 p-2">
         <Button
           type="button"
-          onClick={stop}
-          size={"icon"}
-          className="cursor-pointer absolute right-2 bottom-2 rounded-full p-2 bg-black hover:bg-zinc-800 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-colors"
+          onClick={triggerFileSelect}
+          disabled={isUploading || isLoading}
+          size="icon"
+          variant="ghost"
+          className="rounded-full p-2"
         >
-          <div className="animate-spin h-4 w-4">
-            <svg className="h-4 w-4 text-white" viewBox="0 0 24 24">
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-                fill="none"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-          </div>
+          <Paperclip className={cn("h-4 w-4", isUploading && "animate-spin")} />
         </Button>
-      ) : (
-        <Button
-          type="submit"
-          disabled={isLoading || !input.trim() || isUploading}
-          size={"icon"}
-          className="absolute right-2 bottom-2 rounded-full p-2 bg-black hover:bg-zinc-800 disabled:bg-zinc-300 disabled:dark:bg-zinc-700 dark:disabled:opacity-80 disabled:cursor-not-allowed transition-colors"
-        >
-          <ArrowUp className="h-4 w-4 text-white" />
-        </Button>
-      )}
+        <ModelPicker
+          setSelectedModel={setSelectedModel}
+          selectedModel={selectedModel}
+        />
+
+        {status === "streaming" || status === "submitted" ? (
+          <Button
+            type="button"
+            onClick={stop}
+            size={"icon"}
+            className="cursor-pointer rounded-full p-2 bg-black hover:bg-zinc-800 disabled:bg-zinc-300 disabled:cursor-not-allowed transition-colors"
+          >
+            <div className="animate-spin h-4 w-4">
+              <svg className="h-4 w-4 text-white" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+            </div>
+          </Button>
+        ) : (
+          <Button
+            type="submit"
+            disabled={isLoading || !input.trim() || isUploading}
+            size={"icon"}
+            className="absolute right-2 bottom-2 rounded-full p-2 bg-black hover:bg-zinc-800 disabled:bg-zinc-300 disabled:dark:bg-zinc-700 dark:disabled:opacity-80 disabled:cursor-not-allowed transition-colors"
+          >
+            <ArrowUp className="h-4 w-4 text-white" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 };

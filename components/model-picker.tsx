@@ -19,10 +19,13 @@ export const ModelPicker = ({
   setSelectedModel,
 }: ModelPickerProps) => {
   return (
-    <div className="absolute bottom-2 left-12 flex flex-col gap-2">
+    <div className="flex flex-col gap-2">
       <Select value={selectedModel} onValueChange={setSelectedModel}>
-        <SelectTrigger iconDirection="up">
-          <SelectValue placeholder="Select a model" />
+        <SelectTrigger
+          iconDirection="up"
+          className="h-8 hover:bg-accent hover:text-accent-foreground"
+        >
+          <SelectValue placeholder="Select a model" className="" />
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
