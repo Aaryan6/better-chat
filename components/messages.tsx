@@ -49,7 +49,7 @@ export const Messages = ({
           />
         ))}
         {status === "submitted" && (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2 pl-2">
             <div className="flex flex-row gap-2 items-center">
               <TextShimmer duration={0.8}>Thinking...</TextShimmer>
             </div>

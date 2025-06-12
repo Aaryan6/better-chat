@@ -163,12 +163,12 @@ export const Textarea = ({
   return (
     <div
       className={cn(
-        "relative w-full order-1 bg-muted/50 backdrop-blur-sm border-2 border-border backdrop-blur-sm rounded-2xl",
+        "relative w-full order-1 bg-muted/50 border-2 border-border backdrop-blur-sm rounded-2xl",
         messages.length > 0 && "order-2 rounded-b-none"
       )}
     >
       {uploadedFiles.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 p-2">
           {uploadedFiles.map((file, index) => (
             <div key={index} className="relative">
               {file.type === "image" ? (
@@ -254,25 +254,28 @@ export const Textarea = ({
 
       <div
         className={cn(
-          "absolute flex items-center gap-2",
+          "flex w-full justify-between items-center gap-2 p-2",
           messages.length > 0 ? "bottom-3 right-3" : "bottom-2 right-2"
         )}
       >
-        <Button
-          type="button"
-          onClick={triggerFileSelect}
-          disabled={isUploading || isLoading}
-          size="icon"
-          variant="ghost"
-          className="rounded-full p-2"
-        >
-          <Paperclip className={cn("h-4 w-4", isUploading && "animate-spin")} />
-        </Button>
-        <ModelPicker
-          setSelectedModel={setSelectedModel}
-          selectedModel={selectedModel}
-        />
-
+        <div className="flex flex-row items-center gap-2">
+          <Button
+            type="button"
+            onClick={triggerFileSelect}
+            disabled={isUploading || isLoading}
+            size="icon"
+            variant="ghost"
+            className="rounded-full p-2"
+          >
+            <Paperclip
+              className={cn("h-4 w-4", isUploading && "animate-spin")}
+            />
+          </Button>
+          <ModelPicker
+            setSelectedModel={setSelectedModel}
+            selectedModel={selectedModel}
+          />
+        </div>
         {status === "streaming" || status === "submitted" ? (
           <Button
             type="button"
