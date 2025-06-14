@@ -77,11 +77,13 @@ export default function Chat({
     id: chatId,
     initialMessages,
     maxSteps: 5,
-    body: {
-      selectedModel,
-      chatId,
-    },
     sendExtraMessageFields: true,
+    experimental_prepareRequestBody: (body) => ({
+      id: chatId,
+      message: body.messages.at(-1),
+      selectedModel,
+      messages: messages,
+    }),
     onResponse: (response) => {
       if (!response.ok) {
         // Handle credit exhaustion
@@ -238,8 +240,6 @@ export default function Chat({
   if (!isMounted) {
     return null;
   }
-
-  console.log({ messages });
 
   return (
     <div

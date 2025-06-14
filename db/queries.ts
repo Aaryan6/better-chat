@@ -4,6 +4,7 @@ import {
   stream as streamTable,
 } from "@/db/schema";
 import { db } from "@/lib/db";
+import { UIMessage } from "ai";
 import { desc, eq } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 
@@ -40,23 +41,25 @@ export async function createChat(
 }
 
 // Message queries
-export async function saveMessage(
-  chatId: string,
-  role: "user" | "assistant",
-  content: string
-) {
+export async function saveMessage(message: {
+  chatId: string;
+  role: UIMessage["role"];
+  parts: UIMessage["parts"] | undefined;
+  attachments: UIMessage["experimental_attachments"];
+  id: string;
+}) {
   try {
     await db.insert(messageTable).values({
-      id: uuidv4(),
-      chatId: chatId,
-      role: role,
-      parts: [{ type: "text", text: content }],
-      attachments: [],
+      id: message.id,
+      chatId: message.chatId,
+      role: message.role,
+      parts: message.parts ?? [],
+      attachments: message.attachments,
       createdAt: new Date(),
     });
     return true;
   } catch (error) {
-    console.error(`Failed to save ${role} message:`, error);
+    console.error(`Failed to save ${message.role} message:`, error);
     return false;
   }
 }

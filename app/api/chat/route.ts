@@ -1,5 +1,5 @@
 import { model, modelID } from "@/ai/providers";
-import { weatherTool } from "@/ai/tools";
+import { weatherTool, webSearch } from "@/ai/tools";
 import {
   createChat,
   getChat,
@@ -8,9 +8,17 @@ import {
   saveStreamId,
   updateChatTitle,
 } from "@/db/queries";
+import { getTrailingMessageId } from "@/lib/utils";
 import { generateTitleFromMessages, loadStreams } from "@/utils/chat-store";
 import { auth } from "@clerk/nextjs/server";
-import { createDataStream, smoothStream, streamText, UIMessage } from "ai";
+import {
+  appendClientMessage,
+  appendResponseMessages,
+  createDataStream,
+  smoothStream,
+  streamText,
+  UIMessage,
+} from "ai";
 import { after } from "next/server";
 import { createResumableStreamContext } from "resumable-stream";
 import { v4 as uuidv4 } from "uuid";
@@ -41,8 +49,6 @@ export async function GET(request: Request) {
   }
 
   const streamIds = await loadStreams(chatId);
-
-  console.log({ streamIds });
 
   if (!streamIds.length) {
     return new Response("No streams found", { status: 404 });
@@ -98,8 +104,7 @@ export async function POST(req: Request) {
     // userId remains null, which triggers anonymous user flow
   }
 
-  const { messages, selectedModel, chatId } = await req.json();
-  console.log({ messages, selectedModel, chatId });
+  const { selectedModel, message, id: chatId, messages } = await req.json();
 
   // Handle anonymous users with credit system
   if (!userId) {
@@ -126,13 +131,14 @@ export async function POST(req: Request) {
 
     // Deduct one credit for anonymous users
     const newCredits = currentCredits - 1;
-    const response = await handleChatRequest(
-      messages,
+    const response = await handleChatRequest({
+      message,
       selectedModel,
       chatId,
-      null,
-      newCredits
-    );
+      userId,
+      remainingCredits: newCredits,
+      messages,
+    });
 
     // Set the updated credits in cookie
     response.headers.set(
@@ -147,42 +153,53 @@ export async function POST(req: Request) {
   }
 
   // Handle authenticated users (no credit limit)
-  return handleChatRequest(messages, selectedModel, chatId, userId, undefined);
+  return handleChatRequest({
+    message,
+    selectedModel,
+    chatId,
+    userId,
+    remainingCredits: undefined,
+    messages,
+  });
 }
 
-async function handleChatRequest(
-  messages: any[],
-  selectedModel: modelID,
-  chatId: string,
-  userId: string | null,
-  remainingCredits?: number,
-  data?: any
-) {
+async function handleChatRequest({
+  chatId,
+  message,
+  selectedModel,
+  userId,
+  remainingCredits,
+  messages: previousMessages,
+}: {
+  message: UIMessage;
+  selectedModel: modelID;
+  chatId: string;
+  userId: string | null;
+  remainingCredits?: number;
+  messages: UIMessage[];
+}) {
   if (!chatId) {
     return new Response("chatId is required", { status: 400 });
   }
 
-  const lastUserMessage = messages
-    .filter((m: UIMessage) => m.role === "user")
-    .pop();
-
-  if (!lastUserMessage) {
-    return new Response("No user message found", { status: 400 });
-  }
-
-  // Ensure lastUserMessage.content is a string for database saving
-  const lastUserMessageContentString =
-    typeof lastUserMessage.content === "string"
-      ? lastUserMessage.content
-      : JSON.stringify(lastUserMessage.content); // Fallback for non-string content
+  const messages = appendClientMessage({
+    messages: previousMessages,
+    message,
+  });
 
   // Only save to database if user is authenticated
   if (userId) {
     const chat = await getChat(chatId);
     if (!chat) {
-      await createChat(chatId, userId, lastUserMessageContentString);
+      await createChat(chatId, userId, message.content);
     }
-    await saveMessage(chatId, "user", lastUserMessageContentString);
+    await saveMessage({
+      id: uuidv4(),
+      chatId,
+      role: message.role,
+      parts: message.parts,
+      attachments: message.experimental_attachments ?? [],
+    });
   }
 
   // --- Resumable stream logic ---
@@ -207,28 +224,47 @@ async function handleChatRequest(
         model: model.languageModel(selectedModel),
         system: systemPrompt,
         messages: messages,
-        // tools: {
-        //   getWeather: weatherTool,
-        // },
+        tools: {
+          webSearch,
+        },
         experimental_transform: smoothStream({
           chunking: "word",
           delayInMs: 30,
         }),
-        onFinish: async ({ text }) => {
-          console.log("Stream finished, saving message...");
-          // Only save to database if user is authenticated
+        maxSteps: 2,
+        onFinish: async ({ response, text }) => {
           if (userId) {
-            await saveMessage(chatId, "assistant", text);
-
-            const title = await generateTitleFromMessages({
-              userMessage: lastUserMessageContentString,
-              assistantMessage: text,
+            const assistantId = getTrailingMessageId({
+              messages: response.messages.filter(
+                (message) => message.role === "assistant"
+              ),
             });
+
+            if (!assistantId) {
+              throw new Error("No assistant message found!");
+            }
+
+            const [, assistantMessage] = appendResponseMessages({
+              messages: [message],
+              responseMessages: response.messages,
+            });
+            // Only save to database if user is authenticated
+            await saveMessage({
+              chatId,
+              id: uuidv4(),
+              parts: assistantMessage.parts,
+              role: assistantMessage.role,
+              attachments: assistantMessage.experimental_attachments ?? [],
+            });
+
             if (messages.length < 3) {
+              const title = await generateTitleFromMessages({
+                userMessage: message.content,
+                assistantMessage: text,
+              });
               await updateChatTitle(chatId, title);
             }
           }
-          console.log("Message saved, stream complete");
         },
       });
       result.mergeIntoDataStream(dataStream, { sendReasoning: true });

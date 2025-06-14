@@ -32,7 +32,7 @@ export const Messages = ({
 
   return (
     <ScrollArea
-      className="chat-scroll-area flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4 relative w-full"
+      className="chat-scroll-area flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll py-4 relative w-full"
       viewportRef={containerRef}
       data-streaming={status === "streaming" ? "true" : "false"}
     >

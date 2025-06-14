@@ -8,6 +8,27 @@
       "when": 1749368671998,
       "tag": "0000_faulty_viper",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1749835024839,
+      "tag": "0001_lush_nekra",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1749835189206,
+      "tag": "0002_dapper_sunspot",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1749881448127,
+      "tag": "0003_demonic_red_ghost",
+      "breakpoints": true
     }
   ]
 }

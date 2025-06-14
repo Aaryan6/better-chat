@@ -1,6 +1,6 @@
 "use client";
 
-import type { Message as TMessage } from "ai";
+import { Attachment, tool, type Message as TMessage } from "ai";
 import { AnimatePresence, motion } from "motion/react";
 import { memo, useCallback, useEffect, useState } from "react";
 import equal from "fast-deep-equal";
@@ -134,7 +134,7 @@ const PurePreviewMessage = ({
   setMessages,
   reload,
 }: {
-  message: TMessage;
+  message: TMessage & { attachments?: Attachment[] };
   isLoading: boolean;
   status: "error" | "submitted" | "streaming" | "ready";
   isLatestMessage: boolean;
@@ -180,6 +180,9 @@ const PurePreviewMessage = ({
     }
   };
 
+  const attachments =
+    message.experimental_attachments ?? message.attachments ?? [];
+
   return (
     <AnimatePresence key={message.id}>
       <motion.div
@@ -204,60 +207,57 @@ const PurePreviewMessage = ({
                       initial={{ y: 5, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
                       key={`message-${message.id}-part-${i}`}
-                      className="flex flex-col gap-2 items-end w-full pb-4"
+                      className={cn(
+                        "flex flex-col gap-2 items-start w-full pb-4",
+                        message.role === "user" && "items-end"
+                      )}
                     >
-                      {message.role === "user" &&
-                        message.experimental_attachments &&
-                        message.experimental_attachments.map(
-                          (attachment: any, index: number) => (
-                            <div key={index}>
-                              <div className="flex flex-row gap-2 items-start w-full">
-                                <div className="flex flex-col gap-2 relative">
-                                  {attachment.contentType?.startsWith(
-                                    "image/"
-                                  ) ? (
-                                    <Image
-                                      key={index}
-                                      src={attachment.url}
-                                      alt="User uploaded image"
-                                      width={100}
-                                      height={100}
-                                      className="rounded-md"
-                                    />
+                      {attachments?.map((attachment: any, index: number) => (
+                        <div key={index}>
+                          <div className="flex flex-row gap-2 items-start w-full">
+                            <div className="flex flex-col gap-2 relative">
+                              {attachment.contentType?.startsWith("image/") ? (
+                                <Image
+                                  key={index}
+                                  src={attachment.url}
+                                  alt="User uploaded image"
+                                  width={100}
+                                  height={100}
+                                  className="rounded-md"
+                                />
+                              ) : (
+                                <div className="flex items-center gap-3 p-3 bg-background border rounded-lg max-w-sm">
+                                  {attachment.contentType ===
+                                  "application/pdf" ? (
+                                    <FileIcon className="w-8 h-8 text-red-500 flex-shrink-0" />
                                   ) : (
-                                    <div className="flex items-center gap-3 p-3 bg-background border rounded-lg max-w-sm">
-                                      {attachment.contentType ===
-                                      "application/pdf" ? (
-                                        <FileIcon className="w-8 h-8 text-red-500 flex-shrink-0" />
-                                      ) : (
-                                        <FileTextIcon className="w-8 h-8 text-blue-500 flex-shrink-0" />
-                                      )}
-                                      <div className="flex-1 min-w-0">
-                                        <div className="text-sm font-medium truncate">
-                                          {attachment.name || "Uploaded file"}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                          {attachment.contentType ===
-                                          "application/pdf"
-                                            ? "PDF Document"
-                                            : "Text File"}
-                                        </div>
-                                      </div>
-                                      <a
-                                        href={attachment.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-xs text-primary hover:underline flex-shrink-0"
-                                      >
-                                        View
-                                      </a>
-                                    </div>
+                                    <FileTextIcon className="w-8 h-8 text-blue-500 flex-shrink-0" />
                                   )}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-medium truncate">
+                                      {attachment.name || "Uploaded file"}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {attachment.contentType ===
+                                      "application/pdf"
+                                        ? "PDF Document"
+                                        : "Text File"}
+                                    </div>
+                                  </div>
+                                  <a
+                                    href={attachment.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-primary hover:underline flex-shrink-0"
+                                  >
+                                    View
+                                  </a>
                                 </div>
-                              </div>
+                              )}
                             </div>
-                          )
-                        )}
+                          </div>
+                        </div>
+                      ))}
                       <div
                         className={cn("flex flex-col gap-4 relative", {
                           "bg-secondary text-secondary-foreground px-3 py-2 rounded-tl-xl rounded-tr-xl rounded-bl-xl":
@@ -304,24 +304,19 @@ const PurePreviewMessage = ({
                   );
                 case "tool-invocation":
                   const { toolName, state } = part.toolInvocation;
-
                   return (
                     <motion.div
                       initial={{ y: 5, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
                       key={`message-${message.id}-part-${i}`}
-                      className="flex flex-col gap-2 p-2 mb-3 text-sm bg-zinc-50 dark:bg-zinc-900 rounded-md border border-zinc-200 dark:border-zinc-800"
+                      className="flex flex-col gap-2 p-2 mb-3 text-sm bg-muted rounded-md border border-border"
                     >
                       <div className="flex-1 flex items-center justify-center">
-                        <div className="flex items-center justify-center w-8 h-8 bg-zinc-50 dark:bg-zinc-800 rounded-full">
-                          <PocketKnife className="h-4 w-4" />
-                        </div>
                         <div className="flex-1">
                           <div className="font-medium flex items-baseline gap-2">
-                            {state === "call" ? "Calling" : "Called"}{" "}
-                            <span className="font-mono bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded-md">
-                              {toolName}
-                            </span>
+                            {state === "result"
+                              ? "Used: " + toolName
+                              : "Calling " + toolName}
                           </div>
                         </div>
                         <div className="w-5 h-5 flex items-center justify-center">
@@ -356,6 +351,39 @@ const PurePreviewMessage = ({
                   return null;
               }
             })}
+            {/* web search results */}
+            {status !== "streaming" &&
+              message.parts
+                ?.filter((p) => p.type === "tool-invocation")
+                ?.map((part, i) => {
+                  const { state } = part.toolInvocation;
+                  if (state === "result") {
+                    const { result } = part.toolInvocation;
+                    return (
+                      <div className="pb-4" key={i}>
+                        <ul className="flex flex-col gap-2">
+                          <h3 className="text-sm font-medium text-foreground/80">
+                            Sources
+                          </h3>
+                          {result?.map((item: any, index: number) => (
+                            <li
+                              key={index}
+                              className="bg-muted w-fit p-2 py-0.5 text-sm rounded-md text-muted-foreground hover:text-foreground"
+                            >
+                              <a
+                                href={item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {item.title}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  }
+                })}
           </div>
         </div>
       </motion.div>

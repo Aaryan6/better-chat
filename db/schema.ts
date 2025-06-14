@@ -1,4 +1,4 @@
-import type { InferSelectModel } from 'drizzle-orm';
+import type { InferSelectModel } from "drizzle-orm";
 import {
   pgTable,
   varchar,
@@ -9,60 +9,59 @@ import {
   primaryKey,
   foreignKey,
   boolean,
-} from 'drizzle-orm/pg-core';
+} from "drizzle-orm/pg-core";
 
-export const chat = pgTable('Chat', {
-  id: uuid('id').primaryKey().notNull().defaultRandom(),
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  title: text('title').notNull(),
-  userId: varchar('userId', { length: 255 })
-    .notNull(),
-  visibility: varchar('visibility', { enum: ['public', 'private'] })
+export const chat = pgTable("Chat", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  title: text("title").notNull(),
+  userId: varchar("userId", { length: 255 }).notNull(),
+  visibility: varchar("visibility", { enum: ["public", "private"] })
     .notNull()
-    .default('private'),
+    .default("private"),
 });
 
 export type Chat = InferSelectModel<typeof chat>;
 
-export const message = pgTable('Message', {
-  id: uuid('id').primaryKey().notNull().defaultRandom(),
-  chatId: uuid('chatId')
+export const message = pgTable("Message", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  chatId: uuid("chatId")
     .notNull()
     .references(() => chat.id),
-  role: varchar('role', { length: 255 }).notNull(),
-  parts: json('parts').notNull(),
-  attachments: json('attachments').notNull(),
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  role: varchar("role", { length: 255 }).notNull(),
+  parts: json("parts").notNull(),
+  attachments: json("attachments").default([]),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
 });
 
 export type DBMessage = InferSelectModel<typeof message>;
 
 export const vote = pgTable(
-  'Vote',
+  "Vote",
   {
-    chatId: uuid('chatId')
+    chatId: uuid("chatId")
       .notNull()
       .references(() => chat.id),
-    messageId: uuid('messageId')
+    messageId: uuid("messageId")
       .notNull()
       .references(() => message.id),
-    isUpvoted: boolean('isUpvoted').notNull(),
+    isUpvoted: boolean("isUpvoted").notNull(),
   },
   (table) => {
     return {
       pk: primaryKey({ columns: [table.chatId, table.messageId] }),
     };
-  },
+  }
 );
 
 export type Vote = InferSelectModel<typeof vote>;
 
 export const stream = pgTable(
-  'Stream',
+  "Stream",
   {
-    id: uuid('id').notNull().defaultRandom(),
-    chatId: uuid('chatId').notNull(),
-    createdAt: timestamp('createdAt').notNull().defaultNow(),
+    id: uuid("id").notNull().defaultRandom(),
+    chatId: uuid("chatId").notNull(),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.id] }),
@@ -70,7 +69,7 @@ export const stream = pgTable(
       columns: [table.chatId],
       foreignColumns: [chat.id],
     }),
-  }),
+  })
 );
 
 export type Stream = InferSelectModel<typeof stream>;
