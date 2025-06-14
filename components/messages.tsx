@@ -1,10 +1,9 @@
-import type { Message as TMessage } from "ai";
-import { Message } from "./message";
 import { useScrollToBottom } from "@/lib/hooks/use-scroll-to-bottom";
-import { ScrollArea } from "./ui/scroll-area";
+import type { Message as TMessage } from "ai";
 import { useEffect } from "react";
-import { SpinnerIcon } from "./icons";
+import { Message } from "./message";
 import { TextShimmer } from "./motion-primitives/text-shimmer";
+import { ScrollArea } from "./ui/scroll-area";
 
 import { UseChatHelpers } from "@ai-sdk/react";
 
@@ -32,7 +31,7 @@ export const Messages = ({
 
   return (
     <ScrollArea
-      className="chat-scroll-area flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll py-4 relative w-full"
+      className="chat-scroll-area flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll relative w-full py-4 pt-8 sm:pt-0"
       viewportRef={containerRef}
       data-streaming={status === "streaming" ? "true" : "false"}
     >

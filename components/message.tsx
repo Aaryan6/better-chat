@@ -1,34 +1,36 @@
 "use client";
 
-import { Attachment, tool, type Message as TMessage } from "ai";
-import { AnimatePresence, motion } from "motion/react";
-import { memo, useCallback, useEffect, useState } from "react";
+import { Attachment, type Message as TMessage } from "ai";
 import equal from "fast-deep-equal";
+import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
+import { memo, useCallback, useEffect, useState, useRef } from "react";
 
-import { Markdown } from "./markdown";
+import { deleteTrailingMessages } from "@/db/queries";
 import { cn } from "@/lib/utils";
+import { UseChatHelpers } from "@ai-sdk/react";
 import {
   CheckCircle,
   ChevronDownIcon,
   ChevronUpIcon,
-  Loader2,
-  PocketKnife,
-  SparklesIcon,
-  StopCircle,
-  PencilIcon,
-  RefreshCcwIcon,
   FileIcon,
   FileTextIcon,
+  Loader2,
+  PencilIcon,
+  RefreshCcwIcon,
+  StopCircle,
+  CopyIcon,
 } from "lucide-react";
 import { SpinnerIcon } from "./icons";
-import { Button } from "./ui/button";
+import { Markdown } from "./markdown";
 import { MessageEditor } from "./message-editor";
-import { UseChatHelpers } from "@ai-sdk/react";
+import { Button } from "./ui/button";
 import {
-  deleteTrailingMessages,
-  deleteResponsesAfterMessage,
-} from "@/app/(chat)/actions";
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "./ui/context-menu";
 
 interface ReasoningPart {
   type: "reasoning";
@@ -142,6 +144,8 @@ const PurePreviewMessage = ({
   reload: UseChatHelpers["reload"];
 }) => {
   const [mode, setMode] = useState<"view" | "edit">("view");
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [isLongPressing, setIsLongPressing] = useState(false);
 
   const handleRetry = async () => {
     try {
@@ -180,6 +184,42 @@ const PurePreviewMessage = ({
     }
   };
 
+  const handleCopy = async () => {
+    const textContent =
+      typeof message.content === "string"
+        ? message.content
+        : message.parts?.find((part) => part.type === "text")?.text || "";
+
+    try {
+      await navigator.clipboard.writeText(textContent);
+    } catch (error) {
+      console.error("Failed to copy message:", error);
+    }
+  };
+
+  const handleLongPressStart = () => {
+    setIsLongPressing(true);
+    longPressTimerRef.current = setTimeout(() => {
+      // Long press completed - context menu will show
+    }, 2000);
+  };
+
+  const handleLongPressEnd = () => {
+    setIsLongPressing(false);
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+      }
+    };
+  }, []);
+
   const attachments =
     message.experimental_attachments ?? message.attachments ?? [];
 
@@ -203,104 +243,147 @@ const PurePreviewMessage = ({
               switch (part.type) {
                 case "text":
                   return (
-                    <motion.div
-                      initial={{ y: 5, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      key={`message-${message.id}-part-${i}`}
-                      className={cn(
-                        "flex flex-col gap-2 items-start w-full pb-4",
-                        message.role === "user" && "items-end"
-                      )}
-                    >
-                      {attachments?.map((attachment: any, index: number) => (
-                        <div key={index}>
-                          <div className="flex flex-row gap-2 items-start w-full">
-                            <div className="flex flex-col gap-2 relative">
-                              {attachment.contentType?.startsWith("image/") ? (
-                                <Image
-                                  key={index}
-                                  src={attachment.url}
-                                  alt="User uploaded image"
-                                  width={100}
-                                  height={100}
-                                  className="rounded-md"
-                                />
-                              ) : (
-                                <div className="flex items-center gap-3 p-3 bg-background border rounded-lg max-w-sm">
-                                  {attachment.contentType ===
-                                  "application/pdf" ? (
-                                    <FileIcon className="w-8 h-8 text-red-500 flex-shrink-0" />
-                                  ) : (
-                                    <FileTextIcon className="w-8 h-8 text-blue-500 flex-shrink-0" />
-                                  )}
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-medium truncate">
-                                      {attachment.name || "Uploaded file"}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {attachment.contentType ===
-                                      "application/pdf"
-                                        ? "PDF Document"
-                                        : "Text File"}
-                                    </div>
+                    <ContextMenu key={`message-${message.id}-part-${i}`}>
+                      <ContextMenuTrigger asChild>
+                        <motion.div
+                          initial={{ y: 5, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          className={cn(
+                            "flex flex-col gap-2 items-start w-full pb-4 transition-all duration-200",
+                            message.role === "user" && "items-end",
+                            isLongPressing && "scale-[0.98] opacity-80"
+                          )}
+                          onTouchStart={handleLongPressStart}
+                          onTouchEnd={handleLongPressEnd}
+                          onTouchCancel={handleLongPressEnd}
+                          onMouseDown={handleLongPressStart}
+                          onMouseUp={handleLongPressEnd}
+                          onMouseLeave={handleLongPressEnd}
+                        >
+                          {attachments?.map(
+                            (attachment: any, index: number) => (
+                              <div key={index}>
+                                <div className="flex flex-row gap-2 items-start w-full">
+                                  <div className="flex flex-col gap-2 relative">
+                                    {attachment.contentType?.startsWith(
+                                      "image/"
+                                    ) ? (
+                                      <Image
+                                        key={index}
+                                        src={attachment.url}
+                                        alt="User uploaded image"
+                                        width={100}
+                                        height={100}
+                                        className="rounded-md"
+                                      />
+                                    ) : (
+                                      <div className="flex items-center gap-3 p-3 bg-background border rounded-lg max-w-sm">
+                                        {attachment.contentType ===
+                                        "application/pdf" ? (
+                                          <FileIcon className="w-8 h-8 text-red-500 flex-shrink-0" />
+                                        ) : (
+                                          <FileTextIcon className="w-8 h-8 text-blue-500 flex-shrink-0" />
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                          <div className="text-sm font-medium truncate">
+                                            {attachment.name || "Uploaded file"}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            {attachment.contentType ===
+                                            "application/pdf"
+                                              ? "PDF Document"
+                                              : "Text File"}
+                                          </div>
+                                        </div>
+                                        <a
+                                          href={attachment.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-primary hover:underline flex-shrink-0"
+                                        >
+                                          View
+                                        </a>
+                                      </div>
+                                    )}
                                   </div>
-                                  <a
-                                    href={attachment.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs text-primary hover:underline flex-shrink-0"
-                                  >
-                                    View
-                                  </a>
                                 </div>
-                              )}
-                            </div>
+                              </div>
+                            )
+                          )}
+                          <div
+                            className={cn("flex flex-col gap-4 relative", {
+                              "bg-secondary text-secondary-foreground px-3 py-2 rounded-tl-xl rounded-tr-xl rounded-bl-xl select-none sm:select-text":
+                                message.role === "user",
+                            })}
+                          >
+                            {mode === "edit" && message.role === "user" ? (
+                              <MessageEditor
+                                message={message}
+                                setMode={setMode}
+                                setMessages={setMessages}
+                                reload={reload}
+                              />
+                            ) : (
+                              <>
+                                <Markdown>{part.text}</Markdown>
+                              </>
+                            )}
                           </div>
-                        </div>
-                      ))}
-                      <div
-                        className={cn("flex flex-col gap-4 relative", {
-                          "bg-secondary text-secondary-foreground px-3 py-2 rounded-tl-xl rounded-tr-xl rounded-bl-xl":
-                            message.role === "user",
-                        })}
-                      >
-                        {mode === "edit" && message.role === "user" ? (
-                          <MessageEditor
-                            message={message}
-                            setMode={setMode}
-                            setMessages={setMessages}
-                            reload={reload}
-                          />
-                        ) : (
+                          <div className="flex-row gap-1 px-2 opacity-0 group-hover/message:opacity-100 transition-opacity hidden sm:flex">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={handleCopy}
+                              className="w-6 h-6"
+                              title="Copy message"
+                            >
+                              <CopyIcon className="h-3 w-3" />
+                            </Button>
+                            {message.role === "user" && !isLatestMessage && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={handleRetry}
+                                  className="w-6 h-6"
+                                  title="Retry response"
+                                >
+                                  <RefreshCcwIcon className="h-3 w-3" />
+                                </Button>
+
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="w-6 h-6"
+                                  onClick={() => setMode("edit")}
+                                  title="Edit message"
+                                >
+                                  <PencilIcon className="h-3 w-3" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </motion.div>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent className="w-48">
+                        <ContextMenuItem onClick={handleCopy}>
+                          <CopyIcon className="mr-2 h-4 w-4" />
+                          Copy message
+                        </ContextMenuItem>
+                        {message.role === "user" && !isLatestMessage && (
                           <>
-                            <Markdown>{part.text}</Markdown>
+                            <ContextMenuItem onClick={() => setMode("edit")}>
+                              <PencilIcon className="mr-2 h-4 w-4" />
+                              Edit message
+                            </ContextMenuItem>
+                            <ContextMenuItem onClick={handleRetry}>
+                              <RefreshCcwIcon className="mr-2 h-4 w-4" />
+                              Resend message
+                            </ContextMenuItem>
                           </>
                         )}
-                      </div>
-                      {message.role === "user" && !isLatestMessage && (
-                        <div className="flex flex-row gap-1 px-2 opacity-0 group-hover/message:opacity-100 transition-opacity">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={handleRetry}
-                            className="w-6 h-6"
-                            title="Retry response"
-                          >
-                            <RefreshCcwIcon className="h-3 w-3" />
-                          </Button>
-
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="w-6 h-6"
-                            onClick={() => setMode("edit")}
-                            title="Edit message"
-                          >
-                            <PencilIcon className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      )}
-                    </motion.div>
+                      </ContextMenuContent>
+                    </ContextMenu>
                   );
                 case "tool-invocation":
                   const { toolName, state } = part.toolInvocation;

@@ -27,6 +27,7 @@ interface InputProps {
   onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveFile: (index: number) => void;
   onPaste: (event: React.ClipboardEvent) => void;
+  onFocus?: () => void;
 }
 
 export const Textarea = ({
@@ -42,6 +43,7 @@ export const Textarea = ({
   onFileChange,
   onRemoveFile,
   onPaste,
+  onFocus,
 }: InputProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -122,6 +124,7 @@ export const Textarea = ({
         }
         onChange={handleInputChange}
         onPaste={onPaste}
+        onFocus={onFocus}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -146,11 +149,11 @@ export const Textarea = ({
 
       <div
         className={cn(
-          "flex w-full justify-between items-center gap-2 p-2",
+          "flex w-full justify-between items-center p-2",
           messages.length > 0 ? "bottom-3 right-3" : "bottom-2 right-2"
         )}
       >
-        <div className="flex flex-row items-center gap-2">
+        <div className="flex flex-row items-center">
           <Button
             type="button"
             onClick={triggerFileSelect}

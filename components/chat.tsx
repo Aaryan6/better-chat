@@ -3,20 +3,19 @@
 import { defaultModel, modelID } from "@/ai/providers";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChat } from "@ai-sdk/react";
-import { useEffect, useState, useCallback, DragEvent } from "react";
+import { DragEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Messages } from "./messages";
 import { ProjectOverview } from "./project-overview";
 import { Textarea } from "./textarea";
 
 import { cn } from "@/lib/utils";
-import { Header } from "./header";
-import { mutate } from "swr";
-import Link from "next/link";
-import { XIcon } from "lucide-react";
-import { Button } from "./ui/button";
 import { useUser } from "@clerk/nextjs";
-import { Attachment } from "ai";
+import { XIcon } from "lucide-react";
+import Link from "next/link";
+import { mutate } from "swr";
+import { Header } from "./header";
+import { Button } from "./ui/button";
 
 // Function to get credits from cookies
 const getCreditsFromCookies = (): number => {
@@ -56,6 +55,7 @@ export default function Chat({
   const [files, setFiles] = useState<File[]>([]);
   const { user } = useUser();
   const [isDragging, setIsDragging] = useState(false);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
   const {
     messages,
@@ -143,6 +143,59 @@ export default function Chat({
     const credits = getCreditsFromCookies();
     setRemainingCredits(credits);
   }, []);
+
+  // Handle mobile keyboard detection
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const handleResize = () => {
+      // Detect mobile keyboard by checking if viewport height decreased significantly
+      const viewportHeight =
+        window.visualViewport?.height || window.innerHeight;
+      const windowHeight = window.screen.height;
+      const heightDifference = windowHeight - viewportHeight;
+
+      // Consider keyboard open if height difference is more than 150px (typical threshold)
+      const keyboardOpen = heightDifference > 150;
+      setIsKeyboardOpen(keyboardOpen);
+    };
+
+    const handleVisualViewportChange = () => {
+      if (window.visualViewport) {
+        const viewportHeight = window.visualViewport.height;
+        const windowHeight = window.innerHeight;
+        const heightDifference = windowHeight - viewportHeight;
+
+        const keyboardOpen = heightDifference > 150;
+        setIsKeyboardOpen(keyboardOpen);
+      }
+    };
+
+    // Listen for viewport changes (more reliable for mobile keyboards)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener(
+        "resize",
+        handleVisualViewportChange
+      );
+    } else {
+      // Fallback for browsers without visualViewport support
+      window.addEventListener("resize", handleResize);
+    }
+
+    // Initial check
+    handleResize();
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener(
+          "resize",
+          handleVisualViewportChange
+        );
+      } else {
+        window.removeEventListener("resize", handleResize);
+      }
+    };
+  }, [isMounted]);
 
   // Save selected model to localStorage whenever it changes
   useEffect(() => {
@@ -269,6 +322,24 @@ export default function Chat({
     }
   };
 
+  // Handle input focus to prevent page scroll on mobile
+  const handleInputFocus = () => {
+    if (isKeyboardOpen && messages.length > 0) {
+      // Small delay to ensure keyboard is fully open
+      setTimeout(() => {
+        // Scroll the form into view smoothly without affecting the messages
+        const formElement = document.querySelector("form");
+        if (formElement) {
+          formElement.scrollIntoView({
+            behavior: "smooth",
+            block: "end",
+            inline: "nearest",
+          });
+        }
+      }, 300);
+    }
+  };
+
   // Don't render anything on the server
   if (!isMounted) {
     return null;
@@ -280,31 +351,40 @@ export default function Chat({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        "flex flex-col min-w-0 h-dvh bg-background pt-8",
-        messages.length === 0 && "justify-center"
+        "flex flex-col min-w-0 bg-background relative",
+        messages.length === 0 && "justify-center",
+        isKeyboardOpen ? "h-[100vh]" : "h-dvh"
       )}
+      style={{
+        height:
+          isKeyboardOpen && window.visualViewport
+            ? `${window.visualViewport.height}px`
+            : undefined,
+      }}
     >
       <Header />
       {messages.length === 0 ? (
-        <div className="max-w-xl mx-auto w-full">
+        <div className="max-w-xl mx-auto w-full px-4 sm:px-0">
           <ProjectOverview />
         </div>
       ) : (
-        <Messages
-          messages={messages}
-          isLoading={status === "streaming"}
-          status={status}
-          setMessages={setMessages}
-          reload={reload}
-        />
+        <div className="flex-1 overflow-hidden">
+          <Messages
+            messages={messages}
+            isLoading={status === "streaming"}
+            status={status}
+            setMessages={setMessages}
+            reload={reload}
+          />
+        </div>
       )}
       {!isReadOnly && (
         <form
           onSubmit={handleFormSubmit}
           className={cn(
-            "w-full max-w-xl mx-auto px-4 sm:px-0 pt-4",
+            "w-full max-w-xl mx-auto px-4 sm:px-0 pt-4 flex-shrink-0",
             messages.length > 0 &&
-              "absolute bottom-0 inset-x-0 max-w-3xl pt-0 w-full px-0"
+              "max-w-3xl w-full px-0 sticky bottom-0 backdrop-blur-sm"
           )}
         >
           <div className="space-y-3 grid gap-2">
@@ -365,6 +445,7 @@ export default function Chat({
               onFileChange={handleFileChange}
               onRemoveFile={handleRemoveFile}
               onPaste={handlePaste}
+              onFocus={handleInputFocus}
             />
           </div>
         </form>

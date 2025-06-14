@@ -35,6 +35,7 @@ import { useParams } from "next/navigation";
 import useSWR, { mutate } from "swr";
 import { toast } from "sonner";
 import { useState } from "react";
+import { ThemeToggle } from "./theme-toggle";
 
 interface ChatItem {
   id: string;
@@ -131,7 +132,7 @@ export function ChatSidebar() {
   // Group chats by time periods
   const groupedChats = chats ? groupChatsByTime(chats) : {};
 
-  const handleShareChat = async (chatId: string, chatTitle: string) => {
+  const handleShareChat = async (chatId: string) => {
     if (!user) {
       toast.error("Please sign in to share chats");
       return;
@@ -174,7 +175,7 @@ export function ChatSidebar() {
     }
   };
 
-  const handleMakePrivate = async (chatId: string, chatTitle: string) => {
+  const handleMakePrivate = async (chatId: string) => {
     if (!user) {
       toast.error("Please sign in to manage chat privacy");
       return;
@@ -215,18 +216,23 @@ export function ChatSidebar() {
   return (
     <Sidebar className="w-full md:w-[var(--sidebar-width)] border-r flex flex-col h-screen">
       <div className="p-4 flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Chatbot</h2>
+        <Link href={"/"} className="text-xl font-semibold">
+          Better Chat
+        </Link>
         <Button
           asChild
           variant="ghost"
           size="icon"
-          className="text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground hidden sm:flex"
         >
           <Link href="/">
             <PlusIcon className="h-5 w-5" />
             <span className="sr-only">New Chat</span>
           </Link>
         </Button>
+        <div className="sm:hidden">
+          <ThemeToggle />
+        </div>
       </div>
 
       <SidebarContent className="flex-grow overflow-y-auto p-4 space-y-2">
@@ -259,7 +265,7 @@ export function ChatSidebar() {
           <div className="space-y-4">
             {Object.entries(groupedChats).map(([timeGroup, groupChats]) => (
               <div key={timeGroup} className="space-y-2">
-                <h3 className="text-xs font-medium text-muted-foreground px-2 py-1 sticky top-0 bg-background/80 backdrop-blur-sm">
+                <h3 className="text-xs font-medium text-muted-foreground px-2 py-1 sticky top-0 backdrop-blur-sm">
                   {timeGroup}
                 </h3>
                 <SidebarMenu>
@@ -303,7 +309,7 @@ export function ChatSidebar() {
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleMakePrivate(chat.id, chat.title);
+                                handleMakePrivate(chat.id);
                               }}
                               disabled={makingPrivateChatId === chat.id}
                             >
@@ -321,7 +327,7 @@ export function ChatSidebar() {
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleShareChat(chat.id, chat.title);
+                                handleShareChat(chat.id);
                               }}
                               disabled={sharingChatId === chat.id}
                             >
