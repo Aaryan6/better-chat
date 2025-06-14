@@ -22,6 +22,9 @@ import {
 import { after } from "next/server";
 import { createResumableStreamContext } from "resumable-stream";
 import { v4 as uuidv4 } from "uuid";
+import { UTApi } from "uploadthing/server";
+
+const utapi = new UTApi();
 
 // Helper function to validate UUID
 function isValidUUID(str: string): boolean {
@@ -182,23 +185,64 @@ async function handleChatRequest({
     return new Response("chatId is required", { status: 400 });
   }
 
+  const processedAttachments = [];
+  if (message.experimental_attachments) {
+    for (const attachment of message.experimental_attachments) {
+      const richAttachment = attachment as {
+        name?: string;
+        contentType?: string;
+        content?: Uint8Array;
+      };
+
+      if (richAttachment.content) {
+        // content is received as an object with numeric keys, convert back to Uint8Array
+        const uint8array = new Uint8Array(
+          Object.values(richAttachment.content)
+        );
+        // content is ArrayBuffer, need to convert to something uploadthing accepts
+        const blob = new Blob([uint8array], {
+          type: richAttachment.contentType,
+        });
+        const file = new File([blob], richAttachment.name ?? "untitled", {
+          type: richAttachment.contentType,
+        });
+
+        const uploadResult = await utapi.uploadFiles([file]);
+        if (uploadResult[0].data?.url) {
+          processedAttachments.push({
+            name: richAttachment.name,
+            contentType: richAttachment.contentType,
+            url: uploadResult[0].data.url,
+          });
+        }
+      } else {
+        processedAttachments.push(attachment);
+      }
+    }
+  }
+
+  const messageToSave: UIMessage = {
+    ...message,
+    experimental_attachments: processedAttachments,
+  };
+
   const messages = appendClientMessage({
     messages: previousMessages,
-    message,
+    message: messageToSave,
   });
 
   // Only save to database if user is authenticated
   if (userId) {
     const chat = await getChat(chatId);
     if (!chat) {
-      await createChat(chatId, userId, message.content);
+      await createChat(chatId, userId, message.content as string);
     }
     await saveMessage({
       id: uuidv4(),
       chatId,
-      role: message.role,
-      parts: message.parts,
-      attachments: message.experimental_attachments ?? [],
+      role: messageToSave.role,
+      parts: messageToSave.parts,
+      attachments: messageToSave.experimental_attachments ?? [],
     });
   }
 

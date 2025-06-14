@@ -5,31 +5,28 @@ import { ModelPicker } from "./model-picker";
 import { Button } from "./ui/button";
 import { UIMessage } from "ai";
 import { cn } from "@/lib/utils";
-import { useUploadThing } from "@/lib/uploadthing";
-import { useState, useRef } from "react";
-import { toast } from "sonner";
+import { useRef } from "react";
 import Image from "next/image";
-
-interface UploadedFile {
-  url: string;
-  name: string;
-  type: string;
-  size?: number;
-}
+import TextPreview from "./text-preview";
+import { motion } from "framer-motion";
 
 interface InputProps {
   input: string;
-  handleInputChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  handleInputChange: (
+    event:
+      | React.ChangeEvent<HTMLTextAreaElement>
+      | React.ChangeEvent<HTMLInputElement>
+  ) => void;
   isLoading: boolean;
   status: string;
   stop: () => void;
   selectedModel: modelID;
   setSelectedModel: (model: modelID) => void;
   messages: UIMessage[];
-  onFileUpload?: (files: UploadedFile[]) => void;
-  uploadedFiles?: UploadedFile[];
-  onRemoveFile?: (index: number) => void;
-  onUploadStateChange?: (isUploading: boolean) => void;
+  files: File[];
+  onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemoveFile: (index: number) => void;
+  onPaste: (event: React.ClipboardEvent) => void;
 }
 
 export const Textarea = ({
@@ -41,123 +38,15 @@ export const Textarea = ({
   selectedModel,
   setSelectedModel,
   messages,
-  onFileUpload,
-  uploadedFiles = [],
+  files,
+  onFileChange,
   onRemoveFile,
-  onUploadStateChange,
+  onPaste,
 }: InputProps) => {
-  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const { startUpload: startImageUpload } = useUploadThing("imageUploader", {
-    onClientUploadComplete: (res: any) => {
-      if (res && res[0] && onFileUpload) {
-        const newFile: UploadedFile = {
-          url: res[0].url,
-          name: res[0].name || `image-${Date.now()}.png`,
-          type: "image",
-        };
-        onFileUpload([...uploadedFiles, newFile]);
-        toast.success("Image uploaded successfully!");
-      }
-      setIsUploading(false);
-      onUploadStateChange?.(false);
-    },
-    onUploadError: (error: any) => {
-      console.error("Upload error:", error);
-      toast.error("Failed to upload image");
-      setIsUploading(false);
-      onUploadStateChange?.(false);
-    },
-  });
-
-  const { startUpload: startDocumentUpload } = useUploadThing(
-    "documentUploader",
-    {
-      onClientUploadComplete: (res: any) => {
-        if (res && res[0] && onFileUpload) {
-          const newFile: UploadedFile = {
-            url: res[0].url,
-            name: res[0].name || `document-${Date.now()}`,
-            type: res[0].name?.endsWith(".pdf") ? "pdf" : "text",
-            size: res[0].size,
-          };
-          onFileUpload([...uploadedFiles, newFile]);
-          toast.success("Document uploaded successfully!");
-        }
-        setIsUploading(false);
-        onUploadStateChange?.(false);
-      },
-      onUploadError: (error: any) => {
-        console.error("Upload error:", error);
-        toast.error("Failed to upload document");
-        setIsUploading(false);
-        onUploadStateChange?.(false);
-      },
-    }
-  );
-
-  const handleFileSelect = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    onUploadStateChange?.(true);
-
-    try {
-      if (file.type.startsWith("image/")) {
-        await startImageUpload([file]);
-      } else if (
-        file.type === "application/pdf" ||
-        file.type.startsWith("text/")
-      ) {
-        await startDocumentUpload([file]);
-      } else {
-        // Check file extension as fallback
-        const fileName = file.name.toLowerCase();
-        if (
-          fileName.endsWith(".txt") ||
-          fileName.endsWith(".md") ||
-          fileName.endsWith(".csv")
-        ) {
-          await startDocumentUpload([file]);
-        } else {
-          toast.error("Please select an image, text, or PDF file");
-          setIsUploading(false);
-          onUploadStateChange?.(false);
-        }
-      }
-    } catch (error) {
-      console.error("File upload error:", error);
-      toast.error("Failed to upload file");
-      setIsUploading(false);
-      onUploadStateChange?.(false);
-    }
-  };
 
   const triggerFileSelect = () => {
     fileInputRef.current?.click();
-  };
-
-  const getFileIcon = (type: string) => {
-    switch (type) {
-      case "pdf":
-        return <File className="w-6 h-6 text-red-500" />;
-      case "text":
-        return <FileText className="w-6 h-6 text-blue-500" />;
-      default:
-        return <File className="w-6 h-6 text-gray-500" />;
-    }
-  };
-
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return "";
-    const kb = bytes / 1024;
-    const mb = kb / 1024;
-    if (mb >= 1) return `${mb.toFixed(1)}MB`;
-    return `${kb.toFixed(1)}KB`;
   };
 
   return (
@@ -167,21 +56,21 @@ export const Textarea = ({
         messages.length > 0 && "order-2 rounded-b-none"
       )}
     >
-      {uploadedFiles.length > 0 && (
+      {files.length > 0 && (
         <div className="flex flex-wrap gap-2 p-2">
-          {uploadedFiles.map((file, index) => (
+          {files.map((file, index) => (
             <div key={index} className="relative">
-              {file.type === "image" ? (
+              {file.type.startsWith("image/") ? (
                 <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
                   <Image
-                    src={file.url}
+                    src={URL.createObjectURL(file)}
                     alt={file.name}
                     fill
                     className="object-cover"
                   />
                   <Button
                     type="button"
-                    onClick={() => onRemoveFile?.(index)}
+                    onClick={() => onRemoveFile(index)}
                     size="icon"
                     variant="destructive"
                     className="absolute -top-2 -right-2 w-6 h-6 rounded-full"
@@ -190,28 +79,29 @@ export const Textarea = ({
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 p-3 bg-background border rounded-lg max-w-xs">
-                  {getFileIcon(file.type)}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">
-                      {file.name}
-                    </div>
-                    {file.size && (
-                      <div className="text-xs text-muted-foreground">
-                        {formatFileSize(file.size)}
-                      </div>
-                    )}
-                  </div>
+                <motion.div
+                  key={file.name}
+                  className="relative text-[8px] leading-1 w-28 h-16 overflow-hidden text-zinc-500 border p-2 rounded-lg bg-background dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400"
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{
+                    y: -10,
+                    scale: 1.1,
+                    opacity: 0,
+                    transition: { duration: 0.2 },
+                  }}
+                >
+                  <TextPreview file={file} />
                   <Button
                     type="button"
-                    onClick={() => onRemoveFile?.(index)}
+                    onClick={() => onRemoveFile(index)}
                     size="icon"
-                    variant="ghost"
-                    className="w-6 h-6 flex-shrink-0"
+                    variant="destructive"
+                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full"
                   >
                     <X className="w-4 h-4" />
                   </Button>
-                </div>
+                </motion.div>
               )}
             </div>
           ))}
@@ -226,12 +116,12 @@ export const Textarea = ({
         value={input}
         autoFocus
         placeholder={
-          uploadedFiles.length > 0
+          files.length > 0
             ? "Ask something about these files..."
             : "Say something..."
         }
-        // @ts-expect-error err
         onChange={handleInputChange}
+        onPaste={onPaste}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -247,8 +137,9 @@ export const Textarea = ({
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         accept="image/*,text/*,.txt,.md,.csv,.pdf"
-        onChange={handleFileSelect}
+        onChange={onFileChange}
         className="hidden"
       />
 
@@ -262,14 +153,12 @@ export const Textarea = ({
           <Button
             type="button"
             onClick={triggerFileSelect}
-            disabled={isUploading || isLoading}
+            disabled={isLoading}
             size="icon"
             variant="ghost"
             className="rounded-full p-2"
           >
-            <Paperclip
-              className={cn("h-4 w-4", isUploading && "animate-spin")}
-            />
+            <Paperclip className={cn("h-4 w-4")} />
           </Button>
           <ModelPicker
             setSelectedModel={setSelectedModel}
@@ -305,7 +194,7 @@ export const Textarea = ({
         ) : (
           <Button
             type="submit"
-            disabled={isLoading || !input.trim() || isUploading}
+            disabled={isLoading || !input.trim()}
             size={"icon"}
             className="rounded-full p-2 bg-black hover:bg-zinc-800 disabled:bg-zinc-300 disabled:dark:bg-zinc-700 dark:disabled:opacity-80 disabled:cursor-not-allowed transition-colors"
           >

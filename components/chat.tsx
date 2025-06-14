@@ -3,7 +3,7 @@
 import { defaultModel, modelID } from "@/ai/providers";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChat } from "@ai-sdk/react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, DragEvent } from "react";
 import { toast } from "sonner";
 import { Messages } from "./messages";
 import { ProjectOverview } from "./project-overview";
@@ -40,13 +40,6 @@ const getInitialModel = (): modelID => {
   }
 };
 
-interface UploadedFile {
-  url: string;
-  name: string;
-  type: string;
-  size?: number;
-}
-
 export default function Chat({
   chatId,
   initialMessages = [],
@@ -57,9 +50,9 @@ export default function Chat({
   const [selectedModel, setSelectedModel] = useState<modelID>(getInitialModel);
   const [isMounted, setIsMounted] = useState(false);
   const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
   const { user } = useUser();
+  const [isDragging, setIsDragging] = useState(false);
 
   const {
     messages,
@@ -171,16 +164,8 @@ export default function Chat({
   const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!input.trim()) {
-      toast.error("Please enter a message", {
-        position: "top-center",
-        richColors: true,
-      });
-      return;
-    }
-
-    if (isUploading) {
-      toast.error("Please wait for file upload to complete", {
+    if (!input.trim() && files.length === 0) {
+      toast.error("Please enter a message or add a file", {
         position: "top-center",
         richColors: true,
       });
@@ -188,30 +173,17 @@ export default function Chat({
     }
 
     try {
-      const attachments =
-        uploadedFiles.length > 0
-          ? uploadedFiles.map(
-              (file, index) =>
-                ({
-                  url: file.url,
-                  contentType:
-                    file.type === "image"
-                      ? "image/*"
-                      : file.type === "pdf"
-                      ? "application/pdf"
-                      : "text/plain",
-                  name: file.name,
-                } as Attachment)
-            )
-          : [];
+      const dataTransfer = new DataTransfer();
+      files.forEach((file) => dataTransfer.items.add(file));
+      const fileList = dataTransfer.files;
 
       handleSubmit(e, {
-        experimental_attachments: attachments,
+        experimental_attachments: fileList,
       });
 
       // Clear the uploaded files after sending
-      if (uploadedFiles.length > 0) {
-        setUploadedFiles([]);
+      if (files.length > 0) {
+        setFiles([]);
       }
     } catch (error: any) {
       toast.error(
@@ -224,16 +196,47 @@ export default function Chat({
     }
   };
 
-  const handleFileUpload = (files: UploadedFile[]) => {
-    setUploadedFiles(files);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+    }
   };
 
   const handleRemoveFile = (index: number) => {
-    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
+    setFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleUploadStateChange = (uploading: boolean) => {
-    setIsUploading(uploading);
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const droppedFiles = event.dataTransfer.files;
+    if (droppedFiles) {
+      setFiles((prev) => [...prev, ...Array.from(droppedFiles)]);
+    }
+    setIsDragging(false);
+  };
+
+  const handlePaste = (event: React.ClipboardEvent) => {
+    const items = event.clipboardData?.items;
+
+    if (items) {
+      const pastedFiles = Array.from(items)
+        .map((item) => item.getAsFile())
+        .filter((file): file is File => file !== null);
+
+      if (pastedFiles.length > 0) {
+        setFiles((prev) => [...prev, ...pastedFiles]);
+      }
+    }
   };
 
   // Don't render anything on the server
@@ -243,6 +246,9 @@ export default function Chat({
 
   return (
     <div
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       className={cn(
         "flex flex-col min-w-0 h-dvh bg-background pt-8",
         messages.length === 0 && "justify-center"
@@ -323,10 +329,10 @@ export default function Chat({
             status={status}
             stop={stop}
             messages={messages}
-            onFileUpload={handleFileUpload}
-            uploadedFiles={uploadedFiles}
+            files={files}
+            onFileChange={handleFileChange}
             onRemoveFile={handleRemoveFile}
-            onUploadStateChange={handleUploadStateChange}
+            onPaste={handlePaste}
           />
         </div>
       </form>
