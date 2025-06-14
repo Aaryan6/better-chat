@@ -72,8 +72,8 @@ export const Textarea = ({
                     type="button"
                     onClick={() => onRemoveFile(index)}
                     size="icon"
-                    variant="destructive"
-                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full"
+                    variant="secondary"
+                    className="absolute top-0 right-0 w-6 h-6 rounded-full"
                   >
                     <X className="w-4 h-4" />
                   </Button>
@@ -97,7 +97,7 @@ export const Textarea = ({
                     onClick={() => onRemoveFile(index)}
                     size="icon"
                     variant="secondary"
-                    className="absolute -top-0 -right-0 w-6 h-6 rounded-full cursor-pointer"
+                    className="absolute top-0 right-0 w-6 h-6 rounded-full cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </Button>

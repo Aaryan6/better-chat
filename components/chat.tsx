@@ -27,6 +27,7 @@ const getCreditsFromCookies = (): number => {
 };
 
 const SELECTED_MODEL_KEY = "better-chat-model";
+const LONG_TEXT_THRESHOLD = 500; // Characters
 
 // Function to get initial model from localStorage or fallback to default
 const getInitialModel = (): modelID => {
@@ -230,6 +231,7 @@ export default function Chat({
 
   const handlePaste = (event: React.ClipboardEvent) => {
     const items = event.clipboardData?.items;
+    const text = event.clipboardData?.getData("text/plain");
 
     if (items) {
       const pastedFiles = Array.from(items)
@@ -238,7 +240,32 @@ export default function Chat({
 
       if (pastedFiles.length > 0) {
         setFiles((prev) => [...prev, ...pastedFiles]);
+        return;
       }
+    }
+
+    // Handle long text as file
+    if (text && text.length > LONG_TEXT_THRESHOLD) {
+      // Create a descriptive filename with preview of content
+      const preview = text
+        .slice(0, 30)
+        .replace(/[^\w\s-]/g, "")
+        .trim();
+      const timestamp = new Date()
+        .toISOString()
+        .slice(11, 19)
+        .replace(/:/g, "-");
+      const filename = preview
+        ? `${preview}-${timestamp}.txt`
+        : `pasted-text-${timestamp}.txt`;
+
+      const textFile = new File([text], filename, {
+        type: "text/plain",
+      });
+      setFiles((prev) => [...prev, textFile]);
+
+      // Prevent the text from being pasted into the input
+      event.preventDefault();
     }
   };
 
