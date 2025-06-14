@@ -29,6 +29,20 @@
       "when": 1749881448127,
       "tag": "0003_demonic_red_ghost",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1749901112965,
+      "tag": "0004_nappy_green_goblin",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1749901897824,
+      "tag": "0005_slim_james_howlett",
+      "breakpoints": true
     }
   ]
 }

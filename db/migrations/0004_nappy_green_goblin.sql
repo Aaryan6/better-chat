@@ -1,0 +1,1 @@
+ALTER TABLE "Vote" ADD COLUMN "visibility" varchar DEFAULT 'private' NOT NULL;

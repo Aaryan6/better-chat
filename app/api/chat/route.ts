@@ -185,50 +185,9 @@ async function handleChatRequest({
     return new Response("chatId is required", { status: 400 });
   }
 
-  const processedAttachments = [];
-  if (message.experimental_attachments) {
-    for (const attachment of message.experimental_attachments) {
-      const richAttachment = attachment as {
-        name?: string;
-        contentType?: string;
-        content?: Uint8Array;
-      };
-
-      if (richAttachment.content) {
-        // content is received as an object with numeric keys, convert back to Uint8Array
-        const uint8array = new Uint8Array(
-          Object.values(richAttachment.content)
-        );
-        // content is ArrayBuffer, need to convert to something uploadthing accepts
-        const blob = new Blob([uint8array], {
-          type: richAttachment.contentType,
-        });
-        const file = new File([blob], richAttachment.name ?? "untitled", {
-          type: richAttachment.contentType,
-        });
-
-        const uploadResult = await utapi.uploadFiles([file]);
-        if (uploadResult[0].data?.url) {
-          processedAttachments.push({
-            name: richAttachment.name,
-            contentType: richAttachment.contentType,
-            url: uploadResult[0].data.url,
-          });
-        }
-      } else {
-        processedAttachments.push(attachment);
-      }
-    }
-  }
-
-  const messageToSave: UIMessage = {
-    ...message,
-    experimental_attachments: processedAttachments,
-  };
-
   const messages = appendClientMessage({
     messages: previousMessages,
-    message: messageToSave,
+    message,
   });
 
   // Only save to database if user is authenticated
@@ -237,13 +196,6 @@ async function handleChatRequest({
     if (!chat) {
       await createChat(chatId, userId, message.content as string);
     }
-    await saveMessage({
-      id: uuidv4(),
-      chatId,
-      role: messageToSave.role,
-      parts: messageToSave.parts,
-      attachments: messageToSave.experimental_attachments ?? [],
-    });
   }
 
   // --- Resumable stream logic ---
@@ -278,32 +230,75 @@ async function handleChatRequest({
         maxSteps: 2,
         onFinish: async ({ response, text }) => {
           if (userId) {
-            const assistantId = getTrailingMessageId({
-              messages: response.messages.filter(
-                (message) => message.role === "assistant"
-              ),
-            });
+            const processedAttachments = [];
+            if (message.experimental_attachments) {
+              for (const attachment of message.experimental_attachments) {
+                const richAttachment = attachment as {
+                  name?: string;
+                  contentType?: string;
+                  content?: Uint8Array;
+                };
 
-            if (!assistantId) {
-              throw new Error("No assistant message found!");
+                if (richAttachment.content) {
+                  const uint8array = new Uint8Array(
+                    Object.values(richAttachment.content)
+                  );
+                  const blob = new Blob([uint8array], {
+                    type: richAttachment.contentType,
+                  });
+                  const file = new File(
+                    [blob],
+                    richAttachment.name ?? "untitled",
+                    {
+                      type: richAttachment.contentType,
+                    }
+                  );
+
+                  const uploadResult = await utapi.uploadFiles([file]);
+                  if (uploadResult[0].data?.url) {
+                    processedAttachments.push({
+                      name: richAttachment.name,
+                      contentType: richAttachment.contentType,
+                      url: uploadResult[0].data.url,
+                    });
+                  }
+                } else {
+                  processedAttachments.push(attachment);
+                }
+              }
             }
 
-            const [, assistantMessage] = appendResponseMessages({
+            const userMessageToSave: UIMessage = {
+              ...message,
+              experimental_attachments: processedAttachments,
+            };
+
+            await saveMessage({
+              id: uuidv4(),
+              chatId,
+              role: userMessageToSave.role,
+              parts: userMessageToSave.parts,
+              attachments: userMessageToSave.experimental_attachments ?? [],
+            });
+
+            const [_, newMessages] = appendResponseMessages({
               messages: [message],
               responseMessages: response.messages,
             });
-            // Only save to database if user is authenticated
+
+            // for (const msg of newMessages) {
             await saveMessage({
               chatId,
               id: uuidv4(),
-              parts: assistantMessage.parts,
-              role: assistantMessage.role,
-              attachments: assistantMessage.experimental_attachments ?? [],
+              parts: newMessages.parts,
+              role: newMessages.role,
+              attachments: newMessages.experimental_attachments ?? [],
             });
+            // }
 
             if (messages.length < 3) {
               const title = await generateTitleFromMessages({
-                userMessage: message.content,
+                userMessage: message.content as string,
                 assistantMessage: text,
               });
               await updateChatTitle(chatId, title);

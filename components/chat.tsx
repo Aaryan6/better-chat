@@ -43,9 +43,11 @@ const getInitialModel = (): modelID => {
 export default function Chat({
   chatId,
   initialMessages = [],
+  isReadOnly = false,
 }: {
   chatId: string;
   initialMessages?: any[];
+  isReadOnly?: boolean;
 }) {
   const [selectedModel, setSelectedModel] = useState<modelID>(getInitialModel);
   const [isMounted, setIsMounted] = useState(false);
@@ -199,6 +201,7 @@ export default function Chat({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+      e.target.value = "";
     }
   };
 
@@ -268,74 +271,76 @@ export default function Chat({
           reload={reload}
         />
       )}
-      <form
-        onSubmit={handleFormSubmit}
-        className={cn(
-          "w-full max-w-xl mx-auto px-4 sm:px-0 pt-4",
-          messages.length > 0 && "absolute bottom-0 inset-x-0 max-w-3xl pt-0"
-        )}
-      >
-        <div className="space-y-3 grid gap-2">
-          {!user && remainingCredits !== null && remainingCredits <= 10 && (
-            <div
-              className={cn(
-                "mx-auto max-w-md w-full order-2",
-                messages.length > 0 && "order-1"
-              )}
-            >
-              <div className="flex items-center justify-between p-3 bg-gradient-to-r from-muted to-muted/50 border border-secondary rounded-lg shadow-sm">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium text-primary">
-                    {remainingCredits > 0 ? (
-                      `${remainingCredits} free message${
-                        remainingCredits !== 1 ? "s" : ""
-                      } left`
-                    ) : (
-                      <span className="text-primary">
-                        Sign In to continue chatting
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Link
-                    href="/sign-in"
-                    className="text-xs bg-background hover:bg-primary/80 hover:text-white text-primary px-3 py-1.5 rounded-md transition-colors duration-200 font-medium"
-                  >
-                    {"Sign In"}
-                  </Link>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="text-primary hover:text-primary/80 w-6 h-6"
-                    type="button"
-                    onClick={() => {
-                      setRemainingCredits(null);
-                    }}
-                  >
-                    <XIcon className="w-4 h-4" />
-                  </Button>
+      {!isReadOnly && (
+        <form
+          onSubmit={handleFormSubmit}
+          className={cn(
+            "w-full max-w-xl mx-auto px-4 sm:px-0 pt-4",
+            messages.length > 0 && "absolute bottom-0 inset-x-0 max-w-3xl pt-0"
+          )}
+        >
+          <div className="space-y-3 grid gap-2">
+            {!user && remainingCredits !== null && remainingCredits <= 10 && (
+              <div
+                className={cn(
+                  "mx-auto max-w-md w-full order-2",
+                  messages.length > 0 && "order-1"
+                )}
+              >
+                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-muted to-muted/50 border border-secondary rounded-lg shadow-sm">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                    <span className="text-sm font-medium text-primary">
+                      {remainingCredits > 0 ? (
+                        `${remainingCredits} free message${
+                          remainingCredits !== 1 ? "s" : ""
+                        } left`
+                      ) : (
+                        <span className="text-primary">
+                          Sign In to continue chatting
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/sign-in"
+                      className="text-xs bg-background hover:bg-primary/80 hover:text-white text-primary px-3 py-1.5 rounded-md transition-colors duration-200 font-medium"
+                    >
+                      {"Sign In"}
+                    </Link>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="text-primary hover:text-primary/80 w-6 h-6"
+                      type="button"
+                      onClick={() => {
+                        setRemainingCredits(null);
+                      }}
+                    >
+                      <XIcon className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-          <Textarea
-            selectedModel={selectedModel}
-            setSelectedModel={setSelectedModel}
-            handleInputChange={handleInputChange}
-            input={input}
-            isLoading={status === "streaming"}
-            status={status}
-            stop={stop}
-            messages={messages}
-            files={files}
-            onFileChange={handleFileChange}
-            onRemoveFile={handleRemoveFile}
-            onPaste={handlePaste}
-          />
-        </div>
-      </form>
+            )}
+            <Textarea
+              selectedModel={selectedModel}
+              setSelectedModel={setSelectedModel}
+              handleInputChange={handleInputChange}
+              input={input}
+              isLoading={status === "streaming"}
+              status={status}
+              stop={stop}
+              messages={messages}
+              files={files}
+              onFileChange={handleFileChange}
+              onRemoveFile={handleRemoveFile}
+              onPaste={handlePaste}
+            />
+          </div>
+        </form>
+      )}
     </div>
   );
 }

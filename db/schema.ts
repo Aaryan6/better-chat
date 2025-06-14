@@ -19,6 +19,7 @@ export const chat = pgTable("Chat", {
   visibility: varchar("visibility", { enum: ["public", "private"] })
     .notNull()
     .default("private"),
+  sharePath: text("sharePath").unique(),
 });
 
 export type Chat = InferSelectModel<typeof chat>;

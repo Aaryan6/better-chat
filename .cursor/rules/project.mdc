@@ -27,6 +27,8 @@ Features
 - Chat with multiple llms [✅]
 - Resumable stream (reload will not stopped previous response) [✅]
 - Offline mode with download models with ollama [-]
-- Multimodel (support images and files) [x]
-
-- Web search [x]
+- Multimodel (support images and files) [✅]
+- Web search [✅]
+- Chat Sharing [-]
+- Image generation [x]
+- Multiple generation response [x]

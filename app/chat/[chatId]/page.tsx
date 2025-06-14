@@ -1,8 +1,9 @@
-import Chat from '@/components/chat';
-import { notFound } from 'next/navigation';
-import { db } from '@/lib/db';
-import { message as messageTable } from '@/db/schema';
-import { eq, asc } from 'drizzle-orm';
+import Chat from "@/components/chat";
+import { notFound, redirect } from "next/navigation";
+import { db } from "@/lib/db";
+import { chat as chatTable, message as messageTable } from "@/db/schema";
+import { eq, asc, and } from "drizzle-orm";
+import { auth } from "@clerk/nextjs/server";
 
 type Props = {
   params: Promise<{ chatId: string }>;
@@ -10,7 +11,16 @@ type Props = {
 
 export default async function ChatPage({ params }: Props) {
   const { chatId } = await params;
-  if (!chatId) return notFound();
+  if (!chatId) redirect("/");
+
+  const { userId } = await auth();
+  if (!userId) redirect("/");
+
+  const chat = await db.query.chat.findFirst({
+    where: and(eq(chatTable.id, chatId), eq(chatTable.userId, userId)),
+  });
+
+  if (!chat) redirect("/");
 
   // Fetch messages for this chat, ordered by creation time
   const messages = await db
@@ -25,4 +35,3 @@ export default async function ChatPage({ params }: Props) {
   // Optionally adapt messages to UIMessage shape if needed
   return <Chat chatId={chatId} initialMessages={messages} />;
 }
-

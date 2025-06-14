@@ -59,7 +59,7 @@ export const Textarea = ({
       {files.length > 0 && (
         <div className="flex flex-wrap gap-2 p-2">
           {files.map((file, index) => (
-            <div key={index} className="relative">
+            <div key={`${file.name}-${file.lastModified}`} className="relative">
               {file.type.startsWith("image/") ? (
                 <div className="relative w-20 h-20 rounded-lg overflow-hidden border">
                   <Image
@@ -80,7 +80,7 @@ export const Textarea = ({
                 </div>
               ) : (
                 <motion.div
-                  key={file.name}
+                  key={`${file.name}-${file.lastModified}`}
                   className="relative text-[8px] leading-1 w-28 h-16 overflow-hidden text-zinc-500 border p-2 rounded-lg bg-background dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-400"
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -96,8 +96,8 @@ export const Textarea = ({
                     type="button"
                     onClick={() => onRemoveFile(index)}
                     size="icon"
-                    variant="destructive"
-                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full"
+                    variant="secondary"
+                    className="absolute -top-0 -right-0 w-6 h-6 rounded-full cursor-pointer"
                   >
                     <X className="w-4 h-4" />
                   </Button>
