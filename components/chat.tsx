@@ -303,7 +303,8 @@ export default function Chat({
           onSubmit={handleFormSubmit}
           className={cn(
             "w-full max-w-xl mx-auto px-4 sm:px-0 pt-4",
-            messages.length > 0 && "absolute bottom-0 inset-x-0 max-w-3xl pt-0"
+            messages.length > 0 &&
+              "absolute bottom-0 inset-x-0 max-w-3xl pt-0 w-full px-0"
           )}
         >
           <div className="space-y-3 grid gap-2">

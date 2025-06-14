@@ -132,6 +132,7 @@ export const Textarea = ({
             }
           }
         }}
+        data-gramm_editor="false"
       />
 
       <input

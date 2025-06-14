@@ -40,9 +40,57 @@ interface ChatItem {
   id: string;
   title: string;
   sharePath?: string | null;
-  // userId: string; // Not needed on client if API filters by user
-  // createdAt: string; // For future sorting/grouping
+  createdAt: string;
 }
+
+interface GroupedChats {
+  [key: string]: ChatItem[];
+}
+
+// Utility function to group chats by time periods
+const groupChatsByTime = (chats: ChatItem[]): GroupedChats => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const lastWeek = new Date(today);
+  lastWeek.setDate(lastWeek.getDate() - 7);
+  const lastMonth = new Date(today);
+  lastMonth.setMonth(lastMonth.getMonth() - 1);
+
+  const groups: GroupedChats = {
+    Today: [],
+    Yesterday: [],
+    "Last 7 days": [],
+    "Last month": [],
+    Older: [],
+  };
+
+  chats.forEach((chat) => {
+    const chatDate = new Date(chat.createdAt);
+
+    if (chatDate >= today) {
+      groups.Today.push(chat);
+    } else if (chatDate >= yesterday) {
+      groups.Yesterday.push(chat);
+    } else if (chatDate >= lastWeek) {
+      groups["Last 7 days"].push(chat);
+    } else if (chatDate >= lastMonth) {
+      groups["Last month"].push(chat);
+    } else {
+      groups.Older.push(chat);
+    }
+  });
+
+  // Remove empty groups
+  Object.keys(groups).forEach((key) => {
+    if (groups[key].length === 0) {
+      delete groups[key];
+    }
+  });
+
+  return groups;
+};
 
 export function ChatSidebar() {
   const { user, isLoaded: userLoaded } = useUser();
@@ -79,6 +127,9 @@ export function ChatSidebar() {
 
   // Check if we're offline
   const isOffline = error?.message === "OFFLINE" || !navigator.onLine;
+
+  // Group chats by time periods
+  const groupedChats = chats ? groupChatsByTime(chats) : {};
 
   const handleShareChat = async (chatId: string, chatTitle: string) => {
     if (!user) {
@@ -205,82 +256,93 @@ export function ChatSidebar() {
           </p>
         )}
         {!isLoading && !isOffline && chats && chats?.length > 0 && (
-          <SidebarMenu>
-            {chats.map((chat) => (
-              <SidebarMenuItem
-                key={chat.id}
-                className={cn("relative rounded-lg")}
-              >
-                <SidebarMenuButton
-                  asChild
-                  isActive={chatId === chat.id}
-                  className="w-full justify-start h-10 text-sm truncate pr-10"
-                >
-                  <Link href={`/chat/${chat.id}`}>
-                    <MessageSquareTextIcon className="h-4 w-4 mr-2 flex-shrink-0" />
-                    <span className="truncate flex-grow">{chat.title}</span>
-                    {chat.sharePath && (
-                      <ShareIcon className="h-3 w-3 ml-1 text-muted-foreground flex-shrink-0" />
-                    )}
-                  </Link>
-                </SidebarMenuButton>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
+          <div className="space-y-4">
+            {Object.entries(groupedChats).map(([timeGroup, groupChats]) => (
+              <div key={timeGroup} className="space-y-2">
+                <h3 className="text-xs font-medium text-muted-foreground px-2 py-1 sticky top-0 bg-background/80 backdrop-blur-sm">
+                  {timeGroup}
+                </h3>
+                <SidebarMenu>
+                  {groupChats.map((chat) => (
+                    <SidebarMenuItem
+                      key={chat.id}
+                      className={cn("relative rounded-lg")}
                     >
-                      <MoreHorizontalIcon className="h-4 w-4" />
-                      <span className="sr-only">More options</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
-                    {chat.sharePath ? (
-                      // Chat is already shared - show make private option
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMakePrivate(chat.id, chat.title);
-                        }}
-                        disabled={makingPrivateChatId === chat.id}
+                      <SidebarMenuButton
+                        asChild
+                        isActive={chatId === chat.id}
+                        className="w-full justify-start h-10 text-sm truncate pr-10"
                       >
-                        {makingPrivateChatId === chat.id ? (
-                          <EyeOffIcon className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <LockIcon className="h-4 w-4 mr-2" />
-                        )}
-                        {makingPrivateChatId === chat.id
-                          ? "Making Private..."
-                          : "Make Private"}
-                      </DropdownMenuItem>
-                    ) : (
-                      // Chat is not shared - show share option
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleShareChat(chat.id, chat.title);
-                        }}
-                        disabled={sharingChatId === chat.id}
-                      >
-                        {sharingChatId === chat.id ? (
-                          <CopyIcon className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <ShareIcon className="h-4 w-4 mr-2" />
-                        )}
-                        {sharingChatId === chat.id
-                          ? "Sharing..."
-                          : "Share Chat"}
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </SidebarMenuItem>
+                        <Link href={`/chat/${chat.id}`}>
+                          <MessageSquareTextIcon className="h-4 w-4 mr-2 flex-shrink-0" />
+                          <span className="truncate flex-grow">
+                            {chat.title}
+                          </span>
+                          {chat.sharePath && (
+                            <ShareIcon className="h-3 w-3 ml-1 text-muted-foreground flex-shrink-0" />
+                          )}
+                        </Link>
+                      </SidebarMenuButton>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
+                          >
+                            <MoreHorizontalIcon className="h-4 w-4" />
+                            <span className="sr-only">More options</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          {chat.sharePath ? (
+                            // Chat is already shared - show make private option
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMakePrivate(chat.id, chat.title);
+                              }}
+                              disabled={makingPrivateChatId === chat.id}
+                            >
+                              {makingPrivateChatId === chat.id ? (
+                                <EyeOffIcon className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <LockIcon className="h-4 w-4 mr-2" />
+                              )}
+                              {makingPrivateChatId === chat.id
+                                ? "Making Private..."
+                                : "Make Private"}
+                            </DropdownMenuItem>
+                          ) : (
+                            // Chat is not shared - show share option
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleShareChat(chat.id, chat.title);
+                              }}
+                              disabled={sharingChatId === chat.id}
+                            >
+                              {sharingChatId === chat.id ? (
+                                <CopyIcon className="h-4 w-4 mr-2 animate-spin" />
+                              ) : (
+                                <ShareIcon className="h-4 w-4 mr-2" />
+                              )}
+                              {sharingChatId === chat.id
+                                ? "Sharing..."
+                                : "Share Chat"}
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </div>
             ))}
-          </SidebarMenu>
+          </div>
         )}
       </SidebarContent>
 
