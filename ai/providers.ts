@@ -67,7 +67,7 @@ export const titleModel = "gpt-4o-mini";
 export const MODELS = Object.keys(languageModels);
 
 // Updated default model to use local Ollama for offline usage
-export const defaultModel: modelID = "deepseek-r1:7b";
+export const defaultModel: modelID = "gpt-4o-mini";
 
 // Helper function to check if a model is an Ollama model (works offline)
 export function isOllamaModel(modelId: modelID): boolean {

@@ -1,5 +1,5 @@
 import { model, modelID } from "@/ai/providers";
-import { weatherTool, webSearch } from "@/ai/tools";
+import { webSearch } from "@/ai/tools";
 import {
   createChat,
   getChat,
@@ -8,7 +8,6 @@ import {
   saveStreamId,
   updateChatTitle,
 } from "@/db/queries";
-import { getTrailingMessageId } from "@/lib/utils";
 import { generateTitleFromMessages, loadStreams } from "@/utils/chat-store";
 import { auth } from "@clerk/nextjs/server";
 import {
@@ -21,8 +20,8 @@ import {
 } from "ai";
 import { after } from "next/server";
 import { createResumableStreamContext } from "resumable-stream";
-import { v4 as uuidv4 } from "uuid";
 import { UTApi } from "uploadthing/server";
+import { v4 as uuidv4 } from "uuid";
 
 const utapi = new UTApi();
 
@@ -206,15 +205,10 @@ async function handleChatRequest({
 
   const stream = createDataStream({
     execute: (dataStream) => {
-      // If there's an image but we're using a local model, add a note about image limitations
-      const systemPrompt = `You are a helpful assistant. Be helpful and concise. Use markdown to format your responses.
+      const systemPrompt = `You are a helpful assistant. Be helpful and concise.
           Rules:
-          - Use markdown for code blocks, wrap the code in \`\`\` and add the programming language to the code block.
-          - You have reasoning capabilities and can think through problems step by step.${
-            remainingCredits !== undefined
-              ? `\n          - This is an anonymous user with ${remainingCredits} credits remaining. Remind them to sign up for unlimited access.`
-              : ""
-          }`;
+          - Use markdown to format your responses if needed.
+          - Use markdown for code blocks, wrap the code in \`\`\` and add the programming language to the code block.`;
 
       const result = streamText({
         model: model.languageModel(selectedModel),

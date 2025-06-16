@@ -63,11 +63,26 @@ export function CodeBlock({
     return (
       <div className="not-prose relative my-4">
         <div className="relative max-w-2xl">
+          <div className="bg-zinc-100 dark:bg-zinc-800 rounded-t-md px-3 py-1.5 flex flex-row justify-between items-center sticky top-0">
+            <h1>{language}</h1>
+            <button
+              onClick={handleCopy}
+              className="rounded-md bg-zinc-700/50 p-1.5 text-xs text-zinc-100 hover:bg-zinc-700/70"
+              aria-label="Copy code"
+              type="button"
+            >
+              {copied ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+            </button>
+          </div>
           <SyntaxHighlighter
             language={language || undefined}
             style={atomDark}
             customStyle={{
-              borderRadius: "0.5rem",
+              borderRadius: "0 0 0.5rem 0.5rem",
               padding: "1rem",
               margin: "0",
               backgroundColor: "#101113",
@@ -77,18 +92,6 @@ export function CodeBlock({
           >
             {codeContent}
           </SyntaxHighlighter>
-          <button
-            onClick={handleCopy}
-            className="absolute right-2 top-2 rounded-md bg-zinc-700/50 p-1.5 text-xs text-zinc-100 hover:bg-zinc-700/70"
-            aria-label="Copy code"
-            type="button"
-          >
-            {copied ? (
-              <Check className="h-4 w-4" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-          </button>
         </div>
       </div>
     );

@@ -54,7 +54,7 @@ export default function Chat({
   const [isMounted, setIsMounted] = useState(false);
   const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
   const [files, setFiles] = useState<File[]>([]);
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const isMobile = useIsMobile();
 
@@ -140,10 +140,18 @@ export default function Chat({
   // Use effect to set mounted state and initialize credits
   useEffect(() => {
     setIsMounted(true);
-    // Initialize credits for anonymous users
-    const credits = getCreditsFromCookies();
-    setRemainingCredits(credits);
-  }, []);
+    // Only initialize credits when user data is loaded
+    if (isLoaded) {
+      if (!user) {
+        // Anonymous user - get credits from cookies
+        const credits = getCreditsFromCookies();
+        setRemainingCredits(credits);
+      } else {
+        // Logged-in user - don't set remaining credits initially
+        setRemainingCredits(null);
+      }
+    }
+  }, [user, isLoaded]);
 
   // Handle mobile keyboard detection
   useEffect(() => {
@@ -362,7 +370,7 @@ export default function Chat({
     >
       <Header />
       {messages.length === 0 ? (
-        <div className="max-w-xl mx-auto w-full px-4 sm:px-0">
+        <div className="max-w-xl mx-auto w-full p-4 sm:px-0">
           <ProjectOverview />
         </div>
       ) : (
@@ -407,50 +415,53 @@ export default function Chat({
               isMobile && messages.length > 0 && "max-w-3xl mx-auto"
             )}
           >
-            {!user && remainingCredits !== null && remainingCredits <= 10 && (
-              <div
-                className={cn(
-                  "mx-auto max-w-md w-full order-2",
-                  messages.length > 0 && "order-1"
-                )}
-              >
-                <div className="flex items-center justify-between p-3 bg-gradient-to-r from-muted to-muted/50 border border-secondary rounded-lg shadow-sm">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                    <span className="text-sm font-medium text-primary">
-                      {remainingCredits > 0 ? (
-                        `${remainingCredits} free message${
-                          remainingCredits !== 1 ? "s" : ""
-                        } left`
-                      ) : (
-                        <span className="text-primary">
-                          Sign In to continue chatting
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href="/sign-in"
-                      className="text-xs bg-background hover:bg-primary/80 hover:text-white text-primary px-3 py-1.5 rounded-md transition-colors duration-200 font-medium"
-                    >
-                      {"Sign In"}
-                    </Link>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="text-primary hover:text-primary/80 w-6 h-6"
-                      type="button"
-                      onClick={() => {
-                        setRemainingCredits(null);
-                      }}
-                    >
-                      <XIcon className="w-4 h-4" />
-                    </Button>
+            {isLoaded &&
+              !user &&
+              remainingCredits !== null &&
+              remainingCredits <= 10 && (
+                <div
+                  className={cn(
+                    "mx-auto max-w-md w-full order-2",
+                    messages.length > 0 && "order-1"
+                  )}
+                >
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-muted to-muted/50 border border-secondary rounded-lg shadow-sm">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                      <span className="text-sm font-medium text-primary">
+                        {remainingCredits > 0 ? (
+                          `${remainingCredits} free message${
+                            remainingCredits !== 1 ? "s" : ""
+                          } left`
+                        ) : (
+                          <span className="text-primary">
+                            Sign In to continue chatting
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href="/sign-in"
+                        className="text-xs bg-background hover:bg-primary/80 hover:text-white text-primary px-3 py-1.5 rounded-md transition-colors duration-200 font-medium"
+                      >
+                        {"Sign In"}
+                      </Link>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="text-primary hover:text-primary/80 w-6 h-6"
+                        type="button"
+                        onClick={() => {
+                          setRemainingCredits(null);
+                        }}
+                      >
+                        <XIcon className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
             <Textarea
               selectedModel={selectedModel}
               setSelectedModel={setSelectedModel}

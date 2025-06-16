@@ -1,6 +1,6 @@
 import { tool } from "ai";
-import { z } from "zod";
 import Exa from "exa-js";
+import { z } from "zod";
 
 export const exa = new Exa(process.env.EXA_API_KEY);
 

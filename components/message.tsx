@@ -439,8 +439,8 @@ const PurePreviewMessage = ({
               message.parts
                 ?.filter((p) => p.type === "tool-invocation")
                 ?.map((part, i) => {
-                  const { state } = part.toolInvocation;
-                  if (state === "result") {
+                  const { state, toolName } = part.toolInvocation;
+                  if (toolName === "webSearch" && state === "result") {
                     const { result } = part.toolInvocation;
                     return (
                       <div className="pb-4" key={i}>
