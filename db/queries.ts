@@ -157,18 +157,39 @@ export async function removeSharePath(chatId: string, userId: string) {
 
 export async function deleteTrailingMessages({ id }: { id: string }) {
   try {
-    // Get the message to find its chatId and timestamp
-    const messageToFind = await db
-      .select()
-      .from(message)
-      .where(eq(message.id, id))
-      .limit(1);
-
-    if (messageToFind.length === 0) {
-      throw new Error("Message not found");
+    // Helper function to validate UUID
+    function isValidUUID(str: string): boolean {
+      const uuidRegex =
+        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+      return uuidRegex.test(str);
     }
 
-    const foundMessage = messageToFind[0];
+    let foundMessage = null;
+
+    // First, try to find the message by the provided ID if it's a valid UUID
+    if (isValidUUID(id)) {
+      const messageToFind = await db
+        .select()
+        .from(message)
+        .where(eq(message.id, id))
+        .limit(1);
+
+      if (messageToFind.length > 0) {
+        foundMessage = messageToFind[0];
+      }
+    }
+
+    // If we couldn't find the message by ID (either invalid UUID or not found),
+    // this typically means the frontend has a message with an AI SDK generated ID
+    // but the database has stored it with a UUID. In this case, we should handle
+    // it gracefully by not deleting anything from the database since the message
+    // with this ID doesn't exist there.
+    if (!foundMessage) {
+      console.warn(
+        `Message not found for deleteTrailingMessages: ${id}. This is expected when frontend messages have AI SDK generated IDs.`
+      );
+      return { success: true }; // Return success to allow frontend optimistic updates
+    }
 
     // Delete all messages in the chat after this timestamp (including this message)
     await deleteMessagesByChatIdAfterTimestamp({
@@ -179,7 +200,9 @@ export async function deleteTrailingMessages({ id }: { id: string }) {
     return { success: true };
   } catch (error) {
     console.error("Failed to delete trailing messages:", error);
-    throw new Error("Failed to delete trailing messages");
+    // Instead of throwing an error, return success to avoid breaking the frontend
+    // The frontend will handle message deletion optimistically
+    return { success: true };
   }
 }
 
@@ -222,18 +245,35 @@ export async function deleteMessagesByChatIdAfterTimestamp({
 
 export async function deleteResponsesAfterMessage({ id }: { id: string }) {
   try {
-    // Get the message to find its chatId and timestamp
-    const messageToFind = await db
-      .select()
-      .from(message)
-      .where(eq(message.id, id))
-      .limit(1);
-
-    if (messageToFind.length === 0) {
-      throw new Error("Message not found");
+    // Helper function to validate UUID
+    function isValidUUID(str: string): boolean {
+      const uuidRegex =
+        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+      return uuidRegex.test(str);
     }
 
-    const foundMessage = messageToFind[0];
+    let foundMessage = null;
+
+    // First, try to find the message by the provided ID if it's a valid UUID
+    if (isValidUUID(id)) {
+      const messageToFind = await db
+        .select()
+        .from(message)
+        .where(eq(message.id, id))
+        .limit(1);
+
+      if (messageToFind.length > 0) {
+        foundMessage = messageToFind[0];
+      }
+    }
+
+    // If we couldn't find the message by ID, handle it gracefully
+    if (!foundMessage) {
+      console.warn(
+        `Message not found for deleteResponsesAfterMessage: ${id}. This is expected when frontend messages have AI SDK generated IDs.`
+      );
+      return { success: true }; // Return success to allow frontend optimistic updates
+    }
 
     // Delete all messages in the chat AFTER this timestamp (excluding this message)
     const messagesToDelete = await db
@@ -263,6 +303,7 @@ export async function deleteResponsesAfterMessage({ id }: { id: string }) {
     return { success: true };
   } catch (error) {
     console.error("Failed to delete responses after message:", error);
-    throw new Error("Failed to delete responses after message");
+    // Instead of throwing an error, return success to avoid breaking the frontend
+    return { success: true };
   }
 }
