@@ -16,8 +16,10 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSkeleton,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { SignedIn, SignedOut, SignInButton, useUser } from "@clerk/nextjs";
 import {
@@ -237,10 +239,42 @@ export function ChatSidebar() {
 
       <SidebarContent className="flex-grow overflow-y-auto p-4 space-y-2">
         {user && isLoading && !isOffline && (
-          <p className="text-xs text-muted-foreground px-2">Loading chats...</p>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-16 px-2" />
+              <SidebarMenu>
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <SidebarMenuItem key={`skeleton-recent-${index}`}>
+                    <SidebarMenuSkeleton showIcon />
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-20 px-2" />
+              <SidebarMenu>
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <SidebarMenuItem key={`skeleton-older-${index}`}>
+                    <SidebarMenuSkeleton showIcon />
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </div>
+          </div>
         )}
         {!userLoaded && (
-          <p className="text-xs text-muted-foreground px-2">Loading...</p>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-16 px-2" />
+              <SidebarMenu>
+                {Array.from({ length: 2 }).map((_, index) => (
+                  <SidebarMenuItem key={`skeleton-loading-${index}`}>
+                    <SidebarMenuSkeleton showIcon />
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </div>
+          </div>
         )}
         {userLoaded && !user && (
           <p className="text-xs text-muted-foreground text-center px-2 py-4">

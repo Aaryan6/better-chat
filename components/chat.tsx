@@ -229,6 +229,14 @@ export default function Chat({
   const handleFormSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    if (!user && remainingCredits === 0) {
+      toast.error("You have no credits left, please sign in to continue", {
+        position: "top-center",
+        richColors: true,
+      });
+      return;
+    }
+
     if (!input.trim() && files.length === 0) {
       toast.error("Please enter a message or add a file", {
         position: "top-center",
