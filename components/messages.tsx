@@ -6,6 +6,7 @@ import { TextShimmer } from "./motion-primitives/text-shimmer";
 import { ScrollArea } from "./ui/scroll-area";
 
 import { UseChatHelpers } from "@ai-sdk/react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Messages = ({
   messages,
@@ -21,6 +22,7 @@ export const Messages = ({
   reload: UseChatHelpers["reload"];
 }) => {
   const [containerRef, endRef, scrollToBottom] = useScrollToBottom();
+  const isMobile = useIsMobile();
 
   // Scroll to bottom when a new message is added (not during streaming)
   useEffect(() => {
@@ -31,7 +33,7 @@ export const Messages = ({
 
   return (
     <ScrollArea
-      className="chat-scroll-area flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll relative w-full py-4 pt-8 sm:pt-0"
+      className="chat-scroll-area flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll relative w-full py-4 pt-8 sm:pt-0 h-full"
       viewportRef={containerRef}
       data-streaming={status === "streaming" ? "true" : "false"}
     >
@@ -54,7 +56,12 @@ export const Messages = ({
             </div>
           </div>
         )}
-        <div className="h-32" ref={endRef} />
+        <div
+          style={{
+            height: isMobile ? "0rem" : "7rem",
+          }}
+          ref={endRef}
+        />
       </div>
     </ScrollArea>
   );

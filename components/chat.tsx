@@ -6,7 +6,7 @@ import { useChat } from "@ai-sdk/react";
 import { DragEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Messages } from "./messages";
-import { ProjectOverview } from "./project-overview";
+import { ProjectOverview } from "@/components/project-overview";
 import { Textarea } from "./textarea";
 
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ import Link from "next/link";
 import { mutate } from "swr";
 import { Header } from "./header";
 import { Button } from "./ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Function to get credits from cookies
 const getCreditsFromCookies = (): number => {
@@ -54,8 +55,8 @@ export default function Chat({
   const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const { user } = useUser();
-  const [isDragging, setIsDragging] = useState(false);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   const {
     messages,
@@ -265,12 +266,10 @@ export default function Chat({
 
   const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
-    setIsDragging(true);
   };
 
   const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
-    setIsDragging(false);
   };
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
@@ -279,7 +278,6 @@ export default function Chat({
     if (droppedFiles) {
       setFiles((prev) => [...prev, ...Array.from(droppedFiles)]);
     }
-    setIsDragging(false);
   };
 
   const handlePaste = (event: React.ClipboardEvent) => {
@@ -353,7 +351,7 @@ export default function Chat({
       className={cn(
         "flex flex-col min-w-0 bg-background relative",
         messages.length === 0 && "justify-center",
-        isKeyboardOpen ? "h-[100vh]" : "h-dvh"
+        isKeyboardOpen ? "h-[100dvh]" : "h-dvh"
       )}
       style={{
         height:
@@ -368,7 +366,16 @@ export default function Chat({
           <ProjectOverview />
         </div>
       ) : (
-        <div className="flex-1 overflow-hidden">
+        <div
+          className="flex-1 overflow-hidden"
+          style={{
+            // On mobile with keyboard open, adjust height to account for reduced viewport
+            height:
+              isMobile && isKeyboardOpen && window.visualViewport
+                ? `${window.visualViewport.height - 60}px` // 60px for header
+                : undefined,
+          }}
+        >
           <Messages
             messages={messages}
             isLoading={status === "streaming"}
@@ -382,12 +389,24 @@ export default function Chat({
         <form
           onSubmit={handleFormSubmit}
           className={cn(
-            "w-full max-w-xl mx-auto px-4 sm:px-0 pt-4 flex-shrink-0",
-            messages.length > 0 &&
-              "max-w-3xl w-full px-0 sticky bottom-0 backdrop-blur-sm"
+            "w-full max-w-xl mx-auto sm:px-0 flex-shrink-0",
+            // Desktop: normal flow
+            isMobile &&
+              messages.length > 0 &&
+              "max-w-3xl w-full px-0 sticky bottom-0 backdrop-blur-sm",
+            // Mobile: absolute positioning when there are messages
+            !isMobile &&
+              messages.length > 0 &&
+              "absolute bottom-0 left-0 right-0 w-full max-w-3xl mx-auto z-10"
           )}
         >
-          <div className="space-y-3 grid gap-2">
+          <div
+            className={cn(
+              "space-y-3 grid gap-2",
+              // Center the form content on mobile
+              isMobile && messages.length > 0 && "max-w-3xl mx-auto"
+            )}
+          >
             {!user && remainingCredits !== null && remainingCredits <= 10 && (
               <div
                 className={cn(

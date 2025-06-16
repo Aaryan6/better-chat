@@ -8,11 +8,17 @@ export function useScrollToBottom(): [
   const containerRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const userHasScrolledUp = useRef(false);
+  const isScrollingToBottom = useRef(false);
 
   const scrollToBottom = useCallback(() => {
-    if (endRef.current) {
+    if (endRef.current && !userHasScrolledUp.current) {
+      isScrollingToBottom.current = true;
       endRef.current.scrollIntoView({ behavior: "smooth" });
-      userHasScrolledUp.current = false;
+      // Reset after a delay to allow smooth scroll to complete
+      setTimeout(() => {
+        isScrollingToBottom.current = false;
+        userHasScrolledUp.current = false;
+      }, 500);
     }
   }, []);
 
@@ -20,16 +26,27 @@ export function useScrollToBottom(): [
     const container = containerRef.current;
     if (!container) return;
 
+    let scrollTimeout: NodeJS.Timeout;
+
     const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      const atBottom = scrollHeight - scrollTop <= clientHeight + 50;
-      userHasScrolledUp.current = !atBottom;
+      // Don't update scroll state if we're programmatically scrolling
+      if (isScrollingToBottom.current) return;
+
+      // Debounce scroll detection to avoid rapid state changes
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        const threshold = 100; // Increased threshold for better UX
+        const atBottom = scrollHeight - scrollTop <= clientHeight + threshold;
+        userHasScrolledUp.current = !atBottom;
+      }, 50);
     };
 
     container.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
       container.removeEventListener("scroll", handleScroll);
+      clearTimeout(scrollTimeout);
     };
   }, []);
 
@@ -40,8 +57,13 @@ export function useScrollToBottom(): [
     if (!container || !end) return;
 
     const observer = new MutationObserver(() => {
-      if (!userHasScrolledUp.current) {
+      // Only auto-scroll if user hasn't manually scrolled up and we're not already scrolling
+      if (!userHasScrolledUp.current && !isScrollingToBottom.current) {
+        isScrollingToBottom.current = true;
         end.scrollIntoView({ behavior: "instant", block: "end" });
+        setTimeout(() => {
+          isScrollingToBottom.current = false;
+        }, 100);
       }
     });
 
