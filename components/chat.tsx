@@ -439,7 +439,7 @@ export default function Chat({
         >
           <div
             className={cn(
-              "space-y-3 grid gap-2 max-w-xl mx-auto",
+              "space-y-3 grid gap-2 max-w-3xl mx-auto",
               // Center the form content on mobile
               isMobile && messages.length > 0 && "max-w-3xl mx-auto"
             )}
