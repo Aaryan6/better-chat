@@ -238,6 +238,16 @@ export default function Chat({
     }
   }, [selectedModel, isMounted]);
 
+  // Clear messages when chatId changes (for new chat functionality)
+  useEffect(() => {
+    if (isMounted && initialMessages.length === 0) {
+      // Clear messages when switching to a new chat (chatId changes and no initialMessages)
+      setMessages([]);
+      // Also clear any uploaded files when starting new chat
+      setFiles([]);
+    }
+  }, [chatId, isMounted, initialMessages.length, setMessages]);
+
   useAutoResume({
     autoResume: true,
     initialMessages: messages,
@@ -439,9 +449,9 @@ export default function Chat({
         >
           <div
             className={cn(
-              "space-y-3 grid gap-2 max-w-3xl mx-auto",
+              "space-y-3 grid gap-2 max-w-xl mx-auto",
               // Center the form content on mobile
-              isMobile && messages.length > 0 && "max-w-3xl mx-auto"
+              messages.length > 0 && "max-w-3xl mx-auto"
             )}
           >
             {isLoaded &&

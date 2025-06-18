@@ -30,5 +30,5 @@ export default async function ChatPage({ params }: Props) {
     .orderBy(asc(messageTable.createdAt));
 
   // Optionally adapt messages to UIMessage shape if needed
-  return <Chat chatId={chatId} initialMessages={messages} />;
+  return <Chat key={chatId} chatId={chatId} initialMessages={messages} />;
 }
