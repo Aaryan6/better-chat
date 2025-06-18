@@ -31,6 +31,7 @@ import {
   CopyIcon,
   LockIcon,
   EyeOffIcon,
+  TrashIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -101,6 +102,7 @@ export function ChatSidebar() {
   const [makingPrivateChatId, setMakingPrivateChatId] = useState<string | null>(
     null
   );
+  const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
   const {
     data: chats,
     isLoading,
@@ -212,6 +214,43 @@ export function ChatSidebar() {
       });
     } finally {
       setMakingPrivateChatId(null);
+    }
+  };
+
+  const handleDeleteChat = async (chatId: string) => {
+    if (!user) {
+      toast.error("Please sign in to delete chats");
+      return;
+    }
+
+    setDeletingChatId(chatId);
+    try {
+      const response = await fetch("/api/history", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ chatId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete chat");
+      }
+
+      // Refresh the chat list to update the UI
+      mutate("/api/history");
+
+      toast.success("Chat deleted", {
+        position: "bottom-right",
+      });
+    } catch (error: any) {
+      console.error("Delete chat error:", error);
+      toast.error("Failed to delete chat", {
+        description: error.message || "Please try again",
+        position: "top-center",
+      });
+    } finally {
+      setDeletingChatId(null);
     }
   };
 
@@ -375,6 +414,23 @@ export function ChatSidebar() {
                                 : "Share Chat"}
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteChat(chat.id);
+                            }}
+                            disabled={deletingChatId === chat.id}
+                            className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            {deletingChatId === chat.id ? (
+                              <TrashIcon className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <TrashIcon className="h-4 w-4 mr-2" />
+                            )}
+                            {deletingChatId === chat.id
+                              ? "Deleting..."
+                              : "Delete Chat"}
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </SidebarMenuItem>

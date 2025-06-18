@@ -7,6 +7,7 @@ import { DragEvent, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Messages } from "./messages";
 import { ProjectOverview } from "@/components/project-overview";
+import { FeaturesOverview } from "@/components/features-overview";
 import { Textarea } from "./textarea";
 
 import { cn } from "@/lib/utils";
@@ -425,7 +426,7 @@ export default function Chat({
         <form
           onSubmit={handleFormSubmit}
           className={cn(
-            "w-full max-w-xl mx-auto sm:px-0 flex-shrink-0",
+            "w-full max-w-4xl mx-auto sm:px-0 flex-shrink-0 relative",
             // Desktop: normal flow
             isMobile &&
               messages.length > 0 &&
@@ -438,7 +439,7 @@ export default function Chat({
         >
           <div
             className={cn(
-              "space-y-3 grid gap-2",
+              "space-y-3 grid gap-2 max-w-xl mx-auto",
               // Center the form content on mobile
               isMobile && messages.length > 0 && "max-w-3xl mx-auto"
             )}
@@ -506,6 +507,11 @@ export default function Chat({
               onFocus={handleInputFocus}
             />
           </div>
+          {/* {messages.length === 0 && (
+            <div className="max-w-4xl mx-auto w-full p-4 sm:px-0  top-0 left-0 right-0">
+              <FeaturesOverview />
+            </div>
+          )} */}
         </form>
       )}
     </div>
