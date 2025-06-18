@@ -399,7 +399,7 @@ export default function Chat({
     >
       <Header />
       {messages.length === 0 ? (
-        <div className="max-w-xl mx-auto w-full p-4 sm:px-0">
+        <div className="max-w-xl mx-auto w-full p-4 sm:px-0 sm:pt-56">
           <ProjectOverview />
         </div>
       ) : (
@@ -426,7 +426,7 @@ export default function Chat({
         <form
           onSubmit={handleFormSubmit}
           className={cn(
-            "w-full max-w-4xl mx-auto sm:px-0 flex-shrink-0 relative",
+            "w-full max-w-4xl mx-auto sm:px-0 flex-shrink-0 relative px-2",
             // Desktop: normal flow
             isMobile &&
               messages.length > 0 &&
@@ -507,11 +507,11 @@ export default function Chat({
               onFocus={handleInputFocus}
             />
           </div>
-          {/* {messages.length === 0 && (
-            <div className="max-w-4xl mx-auto w-full p-4 sm:px-0  top-0 left-0 right-0">
+          {messages.length === 0 && (
+            <div className="max-w-4xl mx-auto w-full p-4 sm:px-2 top-0 left-0 right-0 hidden sm:block">
               <FeaturesOverview />
             </div>
-          )} */}
+          )}
         </form>
       )}
     </div>

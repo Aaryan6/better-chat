@@ -59,7 +59,7 @@ export const FeaturesOverview = () => {
           const cardContent = (
             <div className="group relative p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors duration-200 h-full flex flex-col">
               <div className="flex items-center gap-3 mb-3">
-                <div className="p-2 rounded-md bg-primary/10 text-primary">
+                <div className="p-2 rounded-md bg-primary/10 text-primary w-fit">
                   {isGithubCard ? (
                     <Github className="w-5 h-5" />
                   ) : (
