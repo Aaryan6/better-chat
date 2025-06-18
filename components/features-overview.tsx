@@ -7,6 +7,7 @@ import {
   Code2,
   Github as GithubIcon,
   ExternalLink,
+  RefreshCcw,
 } from "lucide-react";
 import { Github } from "./icons";
 
@@ -36,9 +37,10 @@ const features = [
       "Run AI models locally on your machine with Ollama integration",
   },
   {
-    icon: Code2,
-    title: "Code Markdown Support",
-    description: "Beautiful syntax highlighting and code block rendering",
+    icon: RefreshCcw,
+    title: "Resumable Streaming",
+    description:
+      "Continue conversations even after page reload without interrupting responses",
   },
   {
     icon: GithubIcon,

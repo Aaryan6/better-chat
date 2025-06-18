@@ -12,7 +12,7 @@ An advanced AI chat application built with modern web technologies, supporting m
 ### Chat Features
 
 - 🔥 **Multiple AI Providers**: Support for OpenAI, Gemini, DeepSeek, Grok, Meta Llama, and more via OpenRouter
-- 🏠 **Local AI Support**: Offline mode with Ollama integration for private AI models
+- 🏠 **Local AI Support**: Ollama integration for private AI models
 - 🌊 **Resumable Streaming**: Continue conversations even after page reload without interrupting responses
 - 🔄 **Multi-step Reasoning**: Advanced reasoning capabilities with supported models
 - 💾 **Persistent Chat History**: Save and organize your conversations by time periods
@@ -30,7 +30,6 @@ An advanced AI chat application built with modern web technologies, supporting m
 - 🌙 **Dark/Light Mode**: Beautiful theme switching
 - 📱 **Responsive Design**: Optimized for mobile and desktop
 - ⚡ **Fast Performance**: Built with Next.js 15 and optimized for speed
-- 🚫 **Offline Mode**: Continue chatting when internet is unavailable
 - 🎨 **Modern UI**: Clean interface built with Shadcn/UI components
 
 ### Advanced Features
@@ -65,7 +64,7 @@ An advanced AI chat application built with modern web technologies, supporting m
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/better-chat.git
+git clone https://github.com/Aaryan6/better-chat
 cd better-chat
 ```
 
@@ -106,8 +105,11 @@ SITE_URL="http://localhost:3000"
 ### 4. Database Setup
 
 ```bash
-# Push database schema
-pnpm db:push
+# Generate migrations
+pnpm db:generate
+
+# Run migrations
+pnpm db:migrate
 
 # (Optional) Open Drizzle Studio to view your database
 pnpm db:studio
@@ -210,7 +212,7 @@ pnpm db:studio    # Open Drizzle Studio
 
 ### Vercel (Recommended)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/better-chat)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Aaryan6/better-chat)
 
 1. Fork this repository
 2. Connect to Vercel
@@ -271,9 +273,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- 📧 Email: [your-email@example.com](mailto:your-email@example.com)
-- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/better-chat/issues)
-- 💬 Discussions: [GitHub Discussions](https://github.com/yourusername/better-chat/discussions)
+- 📧 Email: [aaryanpatel683@gmail.com](mailto:aaryanpatel683@gmail.com)
+- 🐛 Issues: [GitHub Issues](https://github.com/Aaryan6/better-chat/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/Aaryan6/better-chat/discussions)
 
 ## 🙏 Acknowledgments
 
@@ -285,4 +287,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-Made with ❤️ by [Your Name](https://github.com/yourusername)
+Made with ❤️ by [Aaryan Patel](https://github.com/Aaryan6)
