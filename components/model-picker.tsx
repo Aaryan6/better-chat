@@ -1,6 +1,5 @@
 "use client";
 import { modelID, MODELS } from "@/ai/providers";
-import { useState, useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -10,12 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { Input } from "./ui/input";
-import { Button } from "./ui/button";
-import { PlusIcon, TrashIcon } from "lucide-react";
 import Image from "next/image";
-
-const OLLAMA_MODELS_KEY = "better-chat-ollama-models";
 
 // Model logo mapping
 const MODEL_LOGOS: Record<string, string> = {
@@ -33,11 +27,6 @@ const MODEL_LOGOS: Record<string, string> = {
 // Function to get logo for a model
 const getModelLogo = (modelId: string | undefined | null): string | null => {
   if (!modelId || typeof modelId !== "string") {
-    return null;
-  }
-
-  // For Ollama models, no logo for now
-  if (modelId.startsWith("ollama:")) {
     return null;
   }
 
@@ -78,46 +67,7 @@ const getModelDisplayName = (modelId: string | undefined | null): string => {
   if (!modelId || typeof modelId !== "string") {
     return "Unknown Model";
   }
-  if (modelId.startsWith("ollama:")) {
-    return modelId.replace("ollama:", "");
-  }
   return modelId;
-};
-
-// Helper functions for managing Ollama models in localStorage
-const getSavedOllamaModels = (): string[] => {
-  if (typeof window === "undefined") return [];
-  try {
-    const saved = localStorage.getItem(OLLAMA_MODELS_KEY);
-    return saved ? JSON.parse(saved) : [];
-  } catch {
-    return [];
-  }
-};
-
-const saveOllamaModel = (modelName: string) => {
-  if (typeof window === "undefined") return;
-  try {
-    const existing = getSavedOllamaModels();
-    const ollamaModelId = `ollama:${modelName}`;
-    if (!existing.includes(ollamaModelId)) {
-      const updated = [...existing, ollamaModelId];
-      localStorage.setItem(OLLAMA_MODELS_KEY, JSON.stringify(updated));
-    }
-  } catch (error) {
-    console.warn("Failed to save Ollama model:", error);
-  }
-};
-
-const removeOllamaModel = (modelId: string) => {
-  if (typeof window === "undefined") return;
-  try {
-    const existing = getSavedOllamaModels();
-    const updated = existing.filter((id) => id !== modelId);
-    localStorage.setItem(OLLAMA_MODELS_KEY, JSON.stringify(updated));
-  } catch (error) {
-    console.warn("Failed to remove Ollama model:", error);
-  }
 };
 
 interface ModelPickerProps {
@@ -129,60 +79,6 @@ export const ModelPicker = ({
   selectedModel,
   setSelectedModel,
 }: ModelPickerProps) => {
-  const [customOllamaModel, setCustomOllamaModel] = useState("");
-  const [showOllamaInput, setShowOllamaInput] = useState(false);
-  const [savedOllamaModels, setSavedOllamaModels] = useState<string[]>([]);
-  const [showRemoveMode, setShowRemoveMode] = useState(false);
-
-  // Load saved Ollama models on component mount
-  useEffect(() => {
-    setSavedOllamaModels(getSavedOllamaModels());
-  }, []);
-
-  const handleAddOllamaModel = () => {
-    if (customOllamaModel.trim()) {
-      const modelName = customOllamaModel.trim();
-      const ollamaModelId = `ollama:${modelName}`;
-
-      // Save to localStorage
-      saveOllamaModel(modelName);
-
-      // Update local state
-      setSavedOllamaModels((prev) => {
-        if (!prev.includes(ollamaModelId)) {
-          return [...prev, ollamaModelId];
-        }
-        return prev;
-      });
-
-      // Select the new model
-      setSelectedModel(ollamaModelId);
-      setCustomOllamaModel("");
-      setShowOllamaInput(false);
-    }
-  };
-
-  const handleRemoveOllamaModel = (modelId: string) => {
-    // Remove from localStorage
-    removeOllamaModel(modelId);
-
-    // Update local state
-    setSavedOllamaModels((prev) => prev.filter((id) => id !== modelId));
-
-    // If the removed model was selected, switch to default
-    if (selectedModel === modelId) {
-      setSelectedModel("gpt-4o-mini");
-    }
-
-    setShowRemoveMode(false);
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleAddOllamaModel();
-    }
-  };
-
   const selectedLogo = getModelLogo(selectedModel);
   const selectedDisplayName = getModelDisplayName(selectedModel);
 
@@ -204,18 +100,12 @@ export const ModelPicker = ({
                   className="rounded-sm object-cover"
                 />
               )}
-              <span className="truncate">
-                {typeof selectedModel === "string" &&
-                selectedModel.startsWith("ollama:")
-                  ? `Ollama: ${selectedDisplayName}`
-                  : selectedDisplayName}
-              </span>
+              <span className="truncate">{selectedDisplayName}</span>
             </div>
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectGroup>
-            <SelectLabel>Cloud Models</SelectLabel>
             {MODELS.map((modelId) => {
               const logo = getModelLogo(modelId);
               return (
@@ -235,117 +125,6 @@ export const ModelPicker = ({
                 </SelectItem>
               );
             })}
-          </SelectGroup>
-          <SelectGroup>
-            <SelectLabel>Local Ollama Models</SelectLabel>
-            {savedOllamaModels.map((modelId) => (
-              <SelectItem key={modelId} value={modelId}>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-sm bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                    <span className="text-[8px] font-bold text-white">O</span>
-                  </div>
-                  <span>
-                    {typeof modelId === "string"
-                      ? modelId.replace("ollama:", "")
-                      : "Unknown"}
-                  </span>
-                </div>
-              </SelectItem>
-            ))}
-
-            {/* Add Ollama Model Section */}
-            {!showOllamaInput ? (
-              <div
-                className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer rounded-sm"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowOllamaInput(true);
-                }}
-              >
-                <PlusIcon className="w-4 h-4" />
-                Add Ollama Model
-              </div>
-            ) : (
-              <div className="p-2 space-y-2">
-                <Input
-                  placeholder="Enter model name (e.g., llama3.2)"
-                  value={customOllamaModel}
-                  onChange={(e) => setCustomOllamaModel(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  className="h-8"
-                  autoFocus
-                />
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    onClick={handleAddOllamaModel}
-                    disabled={!customOllamaModel.trim()}
-                    className="h-7 text-xs"
-                  >
-                    Add
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setShowOllamaInput(false);
-                      setCustomOllamaModel("");
-                    }}
-                    className="h-7 text-xs"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Remove Models Section */}
-            {savedOllamaModels.length > 0 && (
-              <>
-                {!showRemoveMode ? (
-                  <div
-                    className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer rounded-sm text-destructive"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setShowRemoveMode(true);
-                    }}
-                  >
-                    <TrashIcon className="w-4 h-4" />
-                    Remove Models
-                  </div>
-                ) : (
-                  <div className="p-2 space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                      Click a model to remove it:
-                    </p>
-                    <div className="space-y-1">
-                      {savedOllamaModels.map((modelId) => (
-                        <Button
-                          key={modelId}
-                          size="sm"
-                          variant="outline"
-                          className="w-full h-7 text-xs text-destructive hover:bg-destructive hover:text-destructive-foreground justify-start"
-                          onClick={() => handleRemoveOllamaModel(modelId)}
-                        >
-                          <TrashIcon className="w-3 h-3 mr-2" />
-                          {typeof modelId === "string"
-                            ? modelId.replace("ollama:", "")
-                            : "Unknown"}
-                        </Button>
-                      ))}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setShowRemoveMode(false)}
-                      className="w-full h-7 text-xs"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
           </SelectGroup>
         </SelectContent>
       </Select>

@@ -12,7 +12,6 @@ An advanced AI chat application built with modern web technologies, supporting m
 ### Chat Features
 
 - 🔥 **Multiple AI Providers**: Support for OpenAI, Gemini, DeepSeek, Grok, Meta Llama, and more via OpenRouter
-- 🏠 **Local AI Support**: Ollama integration for private AI models
 - 🌊 **Resumable Streaming**: Continue conversations even after page reload without interrupting responses
 - 🔄 **Multi-step Reasoning**: Advanced reasoning capabilities with supported models
 - 💾 **Persistent Chat History**: Save and organize your conversations by time periods
@@ -23,6 +22,7 @@ An advanced AI chat application built with modern web technologies, supporting m
 - 🖼️ **Multi-modal**: Chat with images and documents
 - 📎 **Drag & Drop**: Easy file handling with drag and drop interface
 - 🔍 **Web Search**: Integrated web search capabilities via EXA API
+- 💻 **Code Markdown**: Beautiful syntax highlighting and code block rendering
 
 ### User Experience
 
@@ -47,7 +47,6 @@ An advanced AI chat application built with modern web technologies, supporting m
 - **ORM**: [Drizzle ORM](https://orm.drizzle.team/)
 - **Authentication**: [Clerk](https://clerk.com/) with Google OAuth
 - **AI**: [Vercel AI SDK](https://sdk.vercel.ai/) with [OpenRouter](https://openrouter.ai/)
-- **Local AI**: [Ollama](https://ollama.ai/) integration
 - **File Storage**: [UploadThing](https://uploadthing.com/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/) + [Shadcn/UI](https://ui.shadcn.com/)
 - **Package Manager**: [pnpm](https://pnpm.io/)
@@ -159,38 +158,6 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 2. Create a new app
 3. Copy the secret key and app ID
 
-## 🏠 Local AI Setup (Ollama)
-
-For offline AI capabilities:
-
-1. **Install Ollama**:
-
-   ```bash
-   # macOS
-   brew install ollama
-
-   # Linux
-   curl -fsSL https://ollama.ai/install.sh | sh
-
-   # Windows
-   # Download from https://ollama.ai/download
-   ```
-
-2. **Download Models**:
-
-   ```bash
-   ollama pull llama3.2
-   ollama pull codellama
-   ollama pull mistral
-   ```
-
-3. **Start Ollama Server**:
-   ```bash
-   ollama serve
-   ```
-
-The app will automatically detect available Ollama models when running locally.
-
 ## 📝 Available Scripts
 
 ```bash
@@ -236,13 +203,6 @@ Make sure to set all environment variables in your deployment platform. For Verc
 - **DeepSeek**: DeepSeek Chat v3
 - **X.AI**: Grok 3 Mini Beta
 - **Meta**: Llama 4 Scout
-
-### Ollama Models (Local)
-
-- Llama 3.2
-- Code Llama
-- Mistral
-- Any model available in Ollama
 
 ## 📂 Project Structure
 

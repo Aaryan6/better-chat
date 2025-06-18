@@ -13,13 +13,6 @@ const openRouter = createOpenRouter({
   },
 });
 
-import { createOllama } from "ollama-ai-provider";
-
-const ollama = createOllama({
-  // optional settings, e.g.
-  baseURL: "http://localhost:11434/api",
-});
-
 const languageModels = {
   // OpenRouter models
   "gpt-4o-mini": openRouter("openai/gpt-4o-mini"),
@@ -60,18 +53,3 @@ export const titleModel = "gpt-4o-mini";
 export const MODELS = Object.keys(languageModels);
 
 export const defaultModel: modelID = "gpt-4o-mini";
-
-// Helper function to check if a model is an Ollama model
-export function isOllamaModel(modelId: string): boolean {
-  return modelId.startsWith("ollama:");
-}
-
-// Helper function to get Ollama model name from modelId
-export function getOllamaModelName(modelId: string): string {
-  return modelId.replace("ollama:", "");
-}
-
-// Create Ollama model instance
-export function createOllamaModel(modelName: string) {
-  return ollama(modelName);
-}

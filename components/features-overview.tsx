@@ -3,7 +3,6 @@ import {
   BrainCircuit,
   FileImage,
   Search,
-  HardDrive,
   Code2,
   Github as GithubIcon,
   ExternalLink,
@@ -31,10 +30,10 @@ const features = [
       "Get real-time information with integrated web search capabilities",
   },
   {
-    icon: HardDrive,
-    title: "Ollama Local Model Support",
+    icon: Code2,
+    title: "Code Markdown Support",
     description:
-      "Run AI models locally on your machine with Ollama integration",
+      "Beautiful syntax highlighting and code block rendering for programming languages",
   },
   {
     icon: RefreshCcw,
