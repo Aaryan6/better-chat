@@ -1,4 +1,10 @@
-import { model, modelID } from "@/ai/providers";
+import {
+  model,
+  modelID,
+  isOllamaModel,
+  createOllamaModel,
+  getOllamaModelName,
+} from "@/ai/providers";
 import { webSearch } from "@/ai/tools";
 import {
   createChat,
@@ -174,7 +180,7 @@ async function handleChatRequest({
   messages: previousMessages,
 }: {
   message: UIMessage;
-  selectedModel: modelID;
+  selectedModel: modelID | string;
   chatId: string;
   userId: string | null;
   remainingCredits?: number;
@@ -210,10 +216,16 @@ async function handleChatRequest({
           - Use markdown to format your responses if needed.
           - Use markdown for code blocks, wrap the code in \`\`\` and add the programming language to the code block.`;
 
+      // Determine which model to use
+      const modelToUse = isOllamaModel(selectedModel)
+        ? createOllamaModel(getOllamaModelName(selectedModel))
+        : model.languageModel(selectedModel as modelID);
+
       const result = streamText({
-        model: model.languageModel(selectedModel),
+        model: modelToUse,
         system: systemPrompt,
         messages: messages,
+        toolChoice: isOllamaModel(selectedModel) ? "none" : "auto",
         tools: {
           webSearch,
         },
@@ -343,7 +355,7 @@ function errorHandler(error: unknown) {
       error.message.includes("model") &&
       error.message.includes("not found")
     ) {
-      return "Local AI model not found. Please ensure deepseek-r1:7b is installed:\n\n```bash\nollama pull deepseek-r1:7b\n```";
+      return "Local AI model not found. Please ensure the model is installed with Ollama:\n\n```bash\nollama pull <model-name>\n```\n\nTo see available models:\n```bash\nollama list\n```";
     }
 
     return `Error: ${error.message}`;

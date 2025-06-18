@@ -27,15 +27,33 @@ const getCreditsFromCookies = (): number => {
 };
 
 const SELECTED_MODEL_KEY = "better-chat-model";
+const OLLAMA_MODELS_KEY = "better-chat-ollama-models";
 const LONG_TEXT_THRESHOLD = 500; // Characters
 
 // Function to get initial model from localStorage or fallback to default
-const getInitialModel = (): modelID => {
+const getInitialModel = (): modelID | string => {
   if (typeof window === "undefined") return defaultModel;
 
   try {
     const saved = localStorage.getItem(SELECTED_MODEL_KEY);
-    return (saved as modelID) || defaultModel;
+    // Check if the saved model is valid (either a predefined model or an Ollama model)
+    if (saved) {
+      // If it's an Ollama model, check if it exists in saved Ollama models
+      if (saved.startsWith("ollama:")) {
+        const savedOllamaModels = localStorage.getItem(OLLAMA_MODELS_KEY);
+        if (savedOllamaModels) {
+          const ollamaModels = JSON.parse(savedOllamaModels);
+          if (ollamaModels.includes(saved)) {
+            return saved;
+          }
+        }
+        // If Ollama model not found in saved models, return default
+        return defaultModel;
+      }
+      // For non-Ollama models, return as is
+      return saved;
+    }
+    return defaultModel;
   } catch {
     return defaultModel;
   }
@@ -50,7 +68,9 @@ export default function Chat({
   initialMessages?: any[];
   isReadOnly?: boolean;
 }) {
-  const [selectedModel, setSelectedModel] = useState<modelID>(getInitialModel);
+  const [selectedModel, setSelectedModel] = useState<modelID | string>(
+    getInitialModel
+  );
   const [isMounted, setIsMounted] = useState(false);
   const [remainingCredits, setRemainingCredits] = useState<number | null>(null);
   const [files, setFiles] = useState<File[]>([]);

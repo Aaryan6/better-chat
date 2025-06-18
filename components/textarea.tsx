@@ -20,8 +20,8 @@ interface InputProps {
   isLoading: boolean;
   status: string;
   stop: () => void;
-  selectedModel: modelID;
-  setSelectedModel: (model: modelID) => void;
+  selectedModel: modelID | string;
+  setSelectedModel: (model: modelID | string) => void;
   messages: UIMessage[];
   files: File[];
   onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;

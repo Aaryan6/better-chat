@@ -21,14 +21,7 @@ const ollama = createOllama({
 });
 
 const languageModels = {
-  // Local Ollama model for offline usage
-  "deepseek-r1:7b": wrapLanguageModel({
-    model: ollama("deepseek-r1:7b"),
-    middleware: extractReasoningMiddleware({
-      tagName: "think",
-    }),
-  }),
-  "gemma3:1b": ollama("gemma3:1b"),
+  // OpenRouter models
   "gpt-4o-mini": openRouter("openai/gpt-4o-mini"),
   "gemini-2.5-pro-preview-05-06": openRouter(
     "google/gemini-2.5-pro-preview-05-06"
@@ -66,10 +59,19 @@ export const titleModel = "gpt-4o-mini";
 
 export const MODELS = Object.keys(languageModels);
 
-// Updated default model to use local Ollama for offline usage
 export const defaultModel: modelID = "gpt-4o-mini";
 
-// Helper function to check if a model is an Ollama model (works offline)
-export function isOllamaModel(modelId: modelID): boolean {
-  return modelId === "deepseek-r1:7b" || modelId === "gemma3:1b";
+// Helper function to check if a model is an Ollama model
+export function isOllamaModel(modelId: string): boolean {
+  return modelId.startsWith("ollama:");
+}
+
+// Helper function to get Ollama model name from modelId
+export function getOllamaModelName(modelId: string): string {
+  return modelId.replace("ollama:", "");
+}
+
+// Create Ollama model instance
+export function createOllamaModel(modelName: string) {
+  return ollama(modelName);
 }
